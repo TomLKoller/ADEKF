@@ -361,7 +361,6 @@ The Interesting part here is the line:
 
 ```c++
     adekf::ADEKF ekf(adekf::SO3d(),Eigen::Matrix3d::Identity());    
-}
 ```
 While the quaternion requires 4 numbers, the passed covariance is only of dimension 3. The ADEKF requires only the real degrees of freedom of the quaternion (which are 3) in the covariance. Thus, the covariance has to be size 3.
 
