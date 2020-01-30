@@ -14,7 +14,7 @@ if you use this implementation in a published work.
 # Installation
 ## Dependencies
 1.  Eigen 3 is required for the usage of this library
-2.  Boost is an optional dependency. It is required if you want to use certain helper macros
+1.  Boost is an optional dependency. It is required if you want to use certain helper macros
 
 ## Installation
 Installation is not required since it is a header only library. You can simply #include the headers.
@@ -305,6 +305,65 @@ auto dynamic_model=[](auto & state, Eigen::Vector3d velocity, double time_diff){
 };
 ```
 
+
+## Manifolds (e.g. Quaternions)
+In state estimation you often have the problem that you require something like a rotation quaternion in the state space.
+An important property of the rotation quaternion is, that it always have to be normed. In the standard EKF this constraint will be destroyed which will end in a failed estimation of the orientation.
+
+The ADEKF implements a general solution for this problem.  A quaternion is a so called boxplus manifold. For now, just think of a boxplus manifold of some mathematical structure that is represented by N numbers. The manifold now defines two operations, boxplus and boxminus, which define how to use these numbers in a Kalman Filter. 
+The first operation boxplus, defines how a small vectorial change is applied on the manifold. We use quaternions as an example:
+
+A quaternion consists of 4 numbers so N=4. Now you can rotate a quaternion with the measurement of a gyrometer which is an Euler-Angle Axis ( a vector with 3 entries). The boxplus of the quaternion now handles that the quaternion is rotated by the axis. 
+
+In contrast, boxminus defines what the difference of two manifolds is. So for quaternions, we receive from  w=q2 boxminus q1 an Euler-Angle Axis w that defines how you have to rotate q1 to get to q2. So, q1 boxplus w =q2.
+
+
+This principle can be used in an Kalman Filter to teach the filter how to interact with the manifold without destroying its properties. The ADEKF generically supports manifolds. For now, the quaternion (SO3) and the 2d rotation (SO2) are implemented. So to estimate the orientation you can just use the adekf::SO3 class as the state:
+
+```c++
+#include <ADEKF.h>
+#include <Eigen/Core>
+#include <types/SO3.h>
+//Position estimate in m
+int main(){
+   // Set the start orientation to identity
+    adekf::ADEKF ekf(adekf::SO3d(),Eigen::Matrix3d::Identity());
+    //Create dynamic model which adds the angular velocity times time_diff to the position
+    auto dynamic_model=[](auto & state, Eigen::Vector3d angular_rate, double time_diff){
+        state= state + angular_rate * time_diff;
+    };
+    //create a measurement_model which gets a orientation measurement in mm
+    auto measurement_model=[](auto state){
+        return state;
+    };
+    //time step length
+    double time_diff=0.01;
+    // input measurement -> random velocity
+    Eigen::Vector3d angular_rate=angular_rate.Random();
+    //A orientation measurement -> random orientation;
+    adekf::SO3d orientation(Eigen::Quaterniond::UnitRandom());
+    //dynamic noise
+    Eigen::Matrix3d process_noise=process_noise.Identity()*0.01;
+    // measurement noise
+    Eigen::Matrix3d measurement_noise=measurement_noise.Identity();
+    //prediction:pass model, noise followed by the parameters you want in your dynamic _model (variadic acceptance)
+    ekf.predict(dynamic_model, process_noise, angular_rate, time_diff);
+    //measurement update: pass model , noise and a measurement followed by parameters you need for your model  (variadic acceptance)
+    ekf.update(measurement_model, measurement_noise, orientation);
+}
+```
+
+
+
+
+The Interesting part here is the line:
+
+
+```c++
+    adekf::ADEKF ekf(adekf::SO3d(),Eigen::Matrix3d::Identity());    
+}
+```
+While the quaternion requires 4 numbers, the passed covariance is only of dimension 3. The ADEKF requires only the real degrees of freedom of the quaternion (which are 3) in the covariance. Thus, the covariance has to be size 3.
 
 
 
