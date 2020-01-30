@@ -17,6 +17,9 @@ Examples are provided with cmake files. To compile them:
   
 Or in short:
 mkdir build
+
 cd build
+
 cmake ..
+
 make
