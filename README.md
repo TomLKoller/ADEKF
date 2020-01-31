@@ -124,7 +124,7 @@ The general structure of a functor looks like :
 
 struct dynamic_model{
     template<typename T>
-    void operator()(STATE_TYPE &state, ParameterPack ... params){
+    void operator()(STATE_TYPE<T> &state, ParameterPack ... params){
         state= ... //Implement dynamic model
     }
 };
@@ -209,7 +209,7 @@ The general structure of a functor looks like :
 
 struct measurement_model{
     template<typename T>
-    MEASUREMENT_TYPE operator()(STATE_TYPE state, ParameterPack ... params){
+    MEASUREMENT_TYPE operator()(STATE_TYPE<T> state, ParameterPack ... params){
         return= ... //Implement measurement model
     }
 };
@@ -306,6 +306,11 @@ auto dynamic_model=[](auto & state, Eigen::Vector3d velocity, double time_diff){
 ```
 
 
+
+
+
+
+
 ## Manifolds (e.g. Quaternions)
 In state estimation you often have the problem that you require something like a rotation quaternion in the state space.
 An important property of the rotation quaternion is, that it always have to be normed. In the standard EKF this constraint will be destroyed which will end in a failed estimation of the orientation.
@@ -363,6 +368,71 @@ The Interesting part here is the line:
     adekf::ADEKF ekf(adekf::SO3d(),Eigen::Matrix3d::Identity());    
 ```
 While the quaternion requires 4 numbers, the passed covariance is only of dimension 3. The ADEKF requires only the real degrees of freedom of the quaternion (which are 3) in the covariance. Thus, the covariance has to be size 3.
+
+
+
+## Non-additive noise
+Sometimes it is usefull to have noise which applies on certain parameters. For example, if you have an gyrometer  the noise model is:
+
+measured_angular_rate=angular_rate+noise
+
+To use this, the ADEKF supports non additive noise with the functions predictWithNonAdditiveNoise() and
+updateWithNonAdditiveNoise.
+Those functions change two things in contrast to predict() and update.
+1. They accept a slightly different model
+    instead of the usual dynamic model predictWithNonAdditiveNoise accepts
+    
+```c++
+struct dynamic_model{
+    template<typename T>
+    void operator()(STATE_TYPE<T> &state,Eigen::Vector<T,NOISE_DOF> noise,   ParameterPack ... params){
+        state= ... //Implement dynamic model
+    }
+};
+```
+In your dynamic model simply add the noise vector where it applies.
+The change for the update model is similar.
+1. when calling predictWithNonAdditiveNoise and updateWithNonAdditiveNoise you set the dimension of the noise vector with the dimension of your passed covariance matrix.
+
+
+So when we try to write the orientation estimation of the previous section we will use this code instead:
+
+
+```c++
+#include "ADEKF.h"
+#include <Eigen/Core>
+#include "types/SO3.h"
+//Position estimate in m
+void test(){
+    // Set the start orientation to identity
+    adekf::ADEKF ekf(adekf::SO3d(),Eigen::Matrix3d::Identity());
+    //Create dynamic model which adds the angular velocity times time_diff to the position
+    // With non-additive noise the ADEKF gives you a noise vector as second argument which you can use to tell it where the noise applies
+    auto dynamic_model=[](auto & state, auto noise, Eigen::Vector3d angular_rate, double time_diff){
+        state= state + (angular_rate+noise )* time_diff;
+    };
+    //create a measurement_model which gets a orientation measurement in mm
+    auto measurement_model=[](auto state){
+        return state;
+    };
+    //time step length
+    double time_diff=0.01;
+    // input measurement -> random velocity
+    Eigen::Vector3d angular_rate=angular_rate.Random();
+    //A orientation measurement -> random orientation;
+    adekf::SO3d orientation(Eigen::Quaterniond::UnitRandom());
+    //dynamic noise
+    Eigen::Matrix3d process_noise=process_noise.Identity()*0.01;
+    // measurement noise
+    Eigen::Matrix3d measurement_noise=measurement_noise.Identity();
+    //prediction:pass model, noise followed by the parameters you want in your dynamic _model (variadic acceptance)
+    ekf.predictWithNonAdditiveNoise(dynamic_model, process_noise, angular_rate, time_diff);
+    //measurement update: pass model , noise and a measurement followed by parameters you need for your model  (variadic acceptance)
+    ekf.update(measurement_model, measurement_noise, orientation);
+}
+```
+
+
 
 
 
