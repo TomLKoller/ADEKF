@@ -352,7 +352,7 @@ int main(){
     // measurement noise
     Eigen::Matrix3d measurement_noise=measurement_noise.Identity();
     //prediction:pass model, noise followed by the parameters you want in your dynamic _model (variadic acceptance)
-    ekf.predict(dynamic_model, process_noise, angular_rate, time_diff);
+    ekf.predict(dynamic_model, process_noise*time_diff, angular_rate, time_diff);
     //measurement update: pass model , noise and a measurement followed by parameters you need for your model  (variadic acceptance)
     ekf.update(measurement_model, measurement_noise, orientation);
 }
@@ -433,7 +433,7 @@ void test(){
 ```
 
 
-
+Now we dont have to multiply our process noise with time_diff anymore since it is multiplied with it in the dynamic model.
 
 
 
