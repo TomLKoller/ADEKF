@@ -1,8 +1,8 @@
 #pragma once
 
 #include<Eigen/Geometry>
-#include "ceres/rotation.h"
-#include "ceres/jet.h"
+#include "../ceres/rotation.h"
+#include "../ceres/jet.h"
 
 using namespace Eigen;
 

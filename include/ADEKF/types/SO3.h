@@ -1,7 +1,7 @@
 #pragma once
 
 #include<Eigen/Geometry>
-#include "ceres/rotation.h"
+#include "../ceres/rotation.h"
 
 namespace adekf {
 template<typename Scalar = float>
