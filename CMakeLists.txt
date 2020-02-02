@@ -19,7 +19,7 @@ find_package(Eigen3 3.3 REQUIRED NO_MODULE)
 find_package(Boost 1.65 REQUIRED)
 
 target_include_directories(${PROJECT_NAME} INTERFACE ${EIGEN3_INCLUDE_DIR})
-target_link_libraries(ADEKF INTERFACE Boost::boost)
+target_link_libraries(${PROJECT_NAME} INTERFACE Boost::boost)
 
 install(TARGETS ${PROJECT_NAME}
         EXPORT ${PROJECT_NAME}_Targets
@@ -50,7 +50,6 @@ install(FILES "${PROJECT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/ADEKF DESTINATION include)
 
 if (${PROJECT_NAME}_BUILD_TESTS)
-    enable_testing()
     add_subdirectory(examples/slam_and_orientation examples/slam_and_orientation/build)
 endif ()
 
