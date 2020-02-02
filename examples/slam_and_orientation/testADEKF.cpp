@@ -197,7 +197,7 @@ void testHanddataset(bool withPrecision, unsigned repetitions) {
     }
     now = std::chrono::high_resolution_clock::now();
     mseconds = std::chrono::duration_cast<std::chrono::milliseconds>(now - epoch).count();
-    std::cout << "ukf: " << mseconds << " ms" << std::endl << std::endl;
+    std::cout << "ukf: " << mseconds << " ms" << std::endl;
     std::cout << "----------END TEST HAND----------" << std::endl;
 }
 
@@ -553,7 +553,7 @@ void testSLAM(bool enableLandmarks, bool log) {
     std::cout.precision(17);
     std::cout << ekfwj.mu.head<3>().format(IOFormat(FullPrecision)) << std::endl << std::endl;
     std::cout << ekf.mu.head<3>().format(IOFormat(FullPrecision)) << std::endl << std::endl;
-    std::cout << ukf.mu_.head<3>().format(IOFormat(FullPrecision)) << std::endl << std::endl;
+    std::cout << ukf.mu_.head<3>().format(IOFormat(FullPrecision)) << std::endl;
     std::cout << "----------END TEST SLAM----------" << std::endl;
 
     if(log && enableLandmarks) {

@@ -7,17 +7,19 @@ include(GNUInstallDirs)
 
 add_library(${PROJECT_NAME} INTERFACE)
 
-option(${PROJECT_NAME}_WITH_BOOST "Boost enables Helper Macros to define Manifolds" ON)
 option(${PROJECT_NAME}_BUILD_TESTS "Build Tests" ON)
 
 target_include_directories(${PROJECT_NAME} INTERFACE
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/common>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/ADEKF>
   $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
 
 target_compile_features(${PROJECT_NAME} INTERFACE cxx_std_17)
 
 find_package(Eigen3 3.3 REQUIRED NO_MODULE)
+find_package(Boost 1.65 REQUIRED)
+
 target_include_directories(${PROJECT_NAME} INTERFACE ${EIGEN3_INCLUDE_DIR})
+target_link_libraries(ADEKF INTERFACE Boost::boost)
 
 install(TARGETS ${PROJECT_NAME}
         EXPORT ${PROJECT_NAME}_Targets
@@ -45,16 +47,7 @@ install(FILES "${PROJECT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
               "${PROJECT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
         DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/${PROJECT_NAME}/cmake)
 
-install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/common DESTINATION include)
-install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/boost_utils DESTINATION include)
-
-if (${PROJECT_NAME}_WITH_BOOST)
-    target_include_directories(ADEKF INTERFACE
-            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/boost_utils>
-            $<INSTALL_INTERFACE:include>)
-    find_package(Boost 1.65 REQUIRED)
-    target_link_libraries(ADEKF INTERFACE Boost::boost)
-endif ()
+install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/ADEKF DESTINATION include)
 
 if (${PROJECT_NAME}_BUILD_TESTS)
     enable_testing()
