@@ -393,6 +393,57 @@ The Interesting part here is the line:
 ```
 While the quaternion requires 4 numbers, the passed covariance is only of dimension 3. The ADEKF requires only the real degrees of freedom of the quaternion (which are 3) in the covariance. Thus, the covariance has to be size 3.
 
+## Compound States
+States often consist of multiple sub states. For example, estimating the position of an object with an IMU requires not only to track the position, but also the orientation and the velocity.
+The ADEKF ships with Macro support to setup those compound states.
+
+Usually, a state can be divided into manifold substates m1 ... mn  and vector substates v1 ... vk.
+The ADEKF provides the Macro ADEKF_MANIFOLD() to setup up the compound states. It takes 3 arguments:
+
+```c++
+ADEKF_MANIFOLD(CompoundName,Manifolds,Vectors)
+```
+
+The CompoundName is the name of the resulting Compound State Class. 
+The Argument Manifolds declares all sub manifolds of the CompoundState It takes tuples of (ManifoldType, ManifoldName)
+The ManifoldType is the class of the Manifold, e.g. adekf::SO3, whereas the name is the unique identifier to access the substate. Each tuple requires an additional bracket pair around it.  So the call:
+
+```c++
+ADEKF_MANIFOLD(DoubleQuaternion,((adekf::SO3,q1))((adekf::SO3,q2)))
+```
+Creates a compound state DoubleQuaternion which consists of 2SO3 parameterizations. 
+The substates can be accessed via their names:
+```c++
+DoubleQuaternion<double> dq;
+adekf::SO3d q1=dq.q1;
+adekf::SO3d q2=dq.q2;
+```
+
+
+The Vectors parameter takes tuples aswell but this time of the form (VectorSize,VectorName). They do not require additional brackets and are concatenated by a "," (the parameter is variadic).
+
+
+```c++
+ADEKF_MANIFOLD(Pose3D,((adekf::SO3,orientation)),(3,position),(3,velocity) )
+```
+
+While the Vectors parameter is optional the Manifolds parameter is not. Thus, only compound states with Manifolds are supported.
+
+The created CompoundState can be used as any other manifold as the state of the ADEKF, since the macro creates required operators and attributes.
+
+To initialize a compound manifold just pass a value for each of the substates or use the default constructor of each:
+
+```c++
+Pose3D pose(adekf::SO3d(),Eigen::Vector3d::Zero(),Eigen::Vector3d()::Zero())
+Pose3D pose_default();
+```
+
+
+
+
+
+
+
 
 
 ## Non-additive noise
