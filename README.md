@@ -54,7 +54,7 @@ For Quickstarts who do not want to read this, this is how a code can look like.
 //Position estimate in m
 int main(){
     // Set the start position to 0, 0 ,0
-    adekf::ADEKF ekf(Eigen::Vector3d::Zero());
+    adekf::ADEKF ekf(Eigen::Vector3d::Zero(),Eigen::Matrix3d::Identity());
     //Create dynamic model which adds the velocity times time_diff to the position
     auto dynamic_model=[](auto & state, Eigen::Vector3d velocity, double time_diff){
         state=state+velocity*time_diff;
@@ -110,10 +110,10 @@ As a short version you can also write:
 ```c++
 int main(){
     // Set state's type as the state representation and its values as the start_state
-    adekf::ADEKF ekf(Eigen::Vector3d::Zero());  
+    adekf::ADEKF ekf(Eigen::Vector3d::Zero(), Eigen::Matrix3d::Identity());  
 }
 ```
-Here we use the Eigen::Vector3d which is a vector with 3 entries. If no covariance is passed to the adekf, it will initialize it with the identity matrix.
+Here we use the Eigen::Vector3d which is a vector with 3 entries. 
 
 
 ## State transition model
@@ -148,7 +148,7 @@ To call the predict step of the adkef, we need the process noise which has the s
 ```c++
 int main(){
     // Set state's type as the state representation and its values as the start_state
-    adekf::ADEKF ekf(Eigen::Vector3d::Zero());
+     adekf::ADEKF ekf(Eigen::Vector3d::Zero(), Eigen::Matrix3d::Identity());  
     //Set processnoise
     Eigen::Matrix3d noise=noise.Identity();
     // set velocity vector in this case its just a vector of ones
@@ -175,7 +175,7 @@ And pass the time_diff later to the predict function:
 ```c++
 int main(){
     // Set state's type as the state representation and its values as the start_state
-    adekf::ADEKF ekf(Eigen::Vector3d::Zero());
+    adekf::ADEKF ekf(Eigen::Vector3d::Zero(), Eigen::Matrix3d::Identity());
     //Set processnoise
     Eigen::Matrix3d noise=noise.Identity();
     // set velocity vector in this case its just a vector of ones
@@ -183,7 +183,7 @@ int main(){
     //Set time diff to 1/100Hz
     double time_diff=0.01;
     // call predict and pass velocity after the noise
-    ekf.predict(dynamic_model(),noise,velocity,time_diff);
+    ekf.predict(dynamic_model_with_time_diff(),noise,velocity,time_diff);
 }
 ```
 
@@ -199,6 +199,29 @@ auto dynamic_model=[](auto & state, Eigen::Vector3d velocity, double time_diff){
 ```
 The auto keyword in front of state enables the automatic differentiation. Again take care to write & before state.
 Please read Pitfalls with lambdas if you want to use them.
+
+If you use lambdas as models, take care to omit the () since you can not instantiate the lambda.
+
+```c++
+int main(){
+     //Declare the dynamic model
+    auto dynamic_model=[](auto & state, Eigen::Vector3d velocity, double time_diff){
+        state=state+velocity*time_diff;
+    };
+
+    // Set state's type as the state representation and its values as the start_state
+    adekf::ADEKF ekf(Eigen::Vector3d::Zero(), Eigen::Matrix3d::Identity());
+    //Set processnoise
+    Eigen::Matrix3d noise=noise.Identity();
+    // set velocity vector in this case its just a vector of ones
+    Eigen::Vector3d velocity=velocity.Ones();
+    //Set time diff to 1/100Hz
+    double time_diff=0.01;
+    // call predict and pass velocity after the noise
+    ekf.predict(dynamic_model,noise,velocity,time_diff);
+
+}
+```
 
 ## Measurement models
 
@@ -234,7 +257,7 @@ To call the update step of the adkef, we need the measurement noise which has th
 ```c++
 int main(){
     // Set state's type as the state representation and its values as the start_state
-    adekf::ADEKF ekf(Eigen::Vector3d::Zero());
+     adekf::ADEKF ekf(Eigen::Vector3d::Zero(), Eigen::Matrix3d::Identity());
     //Set processnoise
     Eigen::Matrix3d noise=noise.Identity();
     // set position vector in this case its just a vector of ones
@@ -265,11 +288,12 @@ struct dynamic_model_with_time_diff{
     template<typename T>
     void operator()(Eigen::Matrix<T,3,1> &state, Eigen::Vector3d velocity, double time_diff){
         Eigen::Vector3d pos_in_mm=state*1000.;
-        state= (pos+velocity*time_diff)/1000.;
+        state= (pos_in_mm+velocity*time_diff)/1000.;
     }
 };
 ```
 will fail at compilation time. The operators are evaluated with your chosen Scalar type and the ceres::Jet type http://www.ceres-solver.org/automatic_derivatives.html . But the Jet type can not be assigned to classic scalar types.
+The corresponding error is the "Jet can not be assigned to double"
 
 If you need local variables use the template T  instead:
 
@@ -278,7 +302,7 @@ struct dynamic_model_with_time_diff{
     template<typename T>
     void operator()(Eigen::Matrix<T,3,1> &state, Eigen::Vector3d velocity, double time_diff){
         Eigen::Matrix<T,3,1> pos_in_mm=state*1000.;
-        state= (pos+velocity*time_diff)/1000.;
+        state= (pos_in_mm+velocity*time_diff)/1000.;
     }
 };
 ```
