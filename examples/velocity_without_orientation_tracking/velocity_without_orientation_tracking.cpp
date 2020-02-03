@@ -1,5 +1,4 @@
 //
-// Created by tomlucas on 03.02.20.
 //
 
 #include <ADEKF/ADEKF.h>
