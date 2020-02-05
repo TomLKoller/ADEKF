@@ -21,13 +21,6 @@ namespace adekf {
     template<typename State>
     class ADEKF {
         /**
-         * Retreives the DOF of a Manifold or Vector class
-         * @tparam T The class to be used
-         */
-        template<typename T>
-        static constexpr int DOFOf = StateInfo<T>::DOF;
-
-        /**
          * The DOF of the State
          */
         static constexpr int DOF = DOFOf<State>;
@@ -431,6 +424,42 @@ namespace adekf {
             sigma = D * (sigma - (KH * sigma)) * D.transpose();
         }
 
+
+        /**
+        * Add an Offset to the Estimated State, if the State is a CompoundManifold
+         *
+         * For CompoundManifolds we can optimise the Jacobian D, since each derivative is only dependent on one substate
+        * @tparam Manifold The Type of Manifold used as State
+        * @tparam Derived The Type of Matrix used as the Result of K*H
+        * @param diff The Difference to be added to the state
+        * @param KH The Multiplication of Kalman Gain and Measurement-Jacobian
+        */
+        template<typename Derived>
+        void add_diff(CompoundManifold &, const MatrixType<DOF, 1> &diff, const MatrixBase<Derived> &KH) {
+            //Add the Difference on the Estimated State
+            State newMu = mu + diff;
+            //Definition of the Jacobian of the Boxplus Function
+            JacobianOf<State> D=D.Identity(DOF,DOF);
+            int dof=0;
+            auto calcManifoldJacobian=[&](auto & manifold){
+                int constexpr curDOF=DOFOf<decltype(manifold)>;
+                //Calculate the Jacobian of the Boxplus Function
+                auto plus_diff = eval(((manifold + getDerivator<curDOF>()) + diff.template segment<curDOF>(dof) - manifold));
+                for(int i=0; i < curDOF; ++i){
+                    D.template block<1,curDOF>(dof+i,dof)=plus_diff[i].v;
+                }
+
+                dof+=curDOF;
+            };
+            mu.forEachManifold(calcManifoldJacobian);
+
+            //Set the new Estimated Value
+            mu = newMu;
+            //Calculate the new Covariance Matrix
+            sigma = D * (sigma - (KH * sigma)) * D.transpose();
+        }
+
+
         /**
          * Add an Offset to the Estimated State, if the Statesigma is a Matrix
          * @tparam Derived The Type of Matrix used as the Result of K*H
@@ -451,7 +480,7 @@ namespace adekf {
          * @return A dual component vector, to be added to a state
          */
         template<unsigned Size>
-        Derivator<Size> getDerivator() const {
+        static Derivator<Size> getDerivator() {
             //The resulting dual component vector
             Derivator<Size> result;
             //Set the first coefficient in the first row to 1, the second in the second and so on.

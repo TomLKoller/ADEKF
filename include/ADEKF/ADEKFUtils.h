@@ -9,6 +9,11 @@ namespace adekf {
      * Used to detect Manifolds
      */
     struct Manifold{};
+    /**
+     * Common case class for CompoundManifolds
+     * Used to detect CompoundManifolds
+     */
+    struct CompoundManifold:public Manifold{};
 
     /**
      * Retrieves Scalar Type and DOF from a given Manifold Class
@@ -74,7 +79,7 @@ namespace adekf {
      * @tparam T The class to be used
      */
     template<typename T>
-    static constexpr int DOFOf = StateInfo<T>::DOF;
+    static constexpr int DOFOf = StateInfo<typename std::remove_reference<T>::type>::DOF;
 
     /**
      * A Matrix with the Scalar Type of the State

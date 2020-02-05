@@ -3,7 +3,6 @@
 //
 
 #include <ADEKF/ADEKF.h>
-
 int main(){
     //Initialize adekf with 6 states
     adekf::ADEKF ekf(Eigen::Vector3d::Zero(),Eigen::Matrix3d::Identity());
@@ -22,7 +21,7 @@ int main(){
     Eigen::Vector3d velocity=velocity.Random();
     double time_diff=0.01;
     // Initialise noise
-    Eigen::Matrix3d processNoise=processNoise.Random();
+    Eigen::Matrix3d processNoise=processNoise.Identity();
     Eigen::Matrix3d measurement_noise=measurement_noise.Identity();
 
     //Call predict to apply acceleration on velocity
