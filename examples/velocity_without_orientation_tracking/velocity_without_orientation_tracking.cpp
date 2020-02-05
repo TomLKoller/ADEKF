@@ -1,5 +1,4 @@
 //
-// Created by tomlucas on 03.02.20.
 //
 
 #include <ADEKF/ADEKF.h>
@@ -17,18 +16,17 @@ int main(){
     };
 
     //Initialise measurements
-    Eigen::Vector3d acceleration=acceleration.Random();
-    Eigen::Vector3d velocity=velocity.Random();
-    double time_diff=0.01;
+    Eigen::Vector3d __IN_acceleration=__IN_acceleration.Random();
+    Eigen::Vector3d __IN_velocity=__IN_velocity.Random();
+    double __IN_time_diff=0.01;
     // Initialise noise
-    Eigen::Matrix3d processNoise=processNoise.Identity();
-    Eigen::Matrix3d measurement_noise=measurement_noise.Identity();
-
+    Eigen::Matrix3d __IN_processNoise=__IN_processNoise.Identity();
+    Eigen::Matrix3d __IN_measurement_noise=__IN_measurement_noise.Identity();
     //Call predict to apply acceleration on velocity
-    ekf.predict(dynamic_model,processNoise,acceleration,time_diff);
+    ekf.predict(dynamic_model,__IN_processNoise,__IN_acceleration,__IN_time_diff);
 
     //Correct estimation with a measurement update
-    ekf.update(measurement_model,measurement_noise,velocity);
+    ekf.update(measurement_model,__IN_measurement_noise,__IN_velocity);
 
 
     //print out ekf state
