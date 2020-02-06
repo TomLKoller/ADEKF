@@ -81,6 +81,11 @@ namespace adekf {
     template<typename T>
     static constexpr int DOFOf = StateInfo<typename std::remove_reference<T>::type>::DOF;
 
+/*
+ * Macro to read DOF from parameter name, can be used to read DOF of auto parameters
+ */
+#define ADEKF_GETDOF(name) adekf::DOFOf<decltype(name)>
+
     /**
      * A Matrix with the Scalar Type of the State
      * @tparam N Number of Rows

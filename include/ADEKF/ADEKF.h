@@ -8,8 +8,6 @@
 #include <iostream>
 
 
-
-
 namespace adekf {
     using namespace Eigen;
     using namespace std::placeholders;
@@ -47,19 +45,19 @@ namespace adekf {
 
 
         template<int N, int M>
-        static constexpr bool dynamicMatrix = N*M > USE_EIGEN_DYNAMIC_THRESHHOLD;
+        static constexpr bool dynamicMatrix = N * M > USE_EIGEN_DYNAMIC_THRESHHOLD;
 
         /**
          * The Covariance of the State
          */
-        using Covariance = typename std::conditional<dynamicMatrix<DOF,DOF>, MatrixType<-1, -1>, SquareMatrixType<DOF>>::type;
+        using Covariance = typename std::conditional<dynamicMatrix<DOF, DOF>, MatrixType<-1, -1>, SquareMatrixType<DOF>>::type;
 
         /**
          * The Jacobian of a given State or Measurement Class
          * @tparam The class to be used
          */
         template<typename T>
-        using JacobianOf = typename std::conditional<dynamicMatrix<DOFOf<T>,DOF>, MatrixType<-1, -1>, MatrixType<DOFOf<T>, DOF>>::type;
+        using JacobianOf = typename std::conditional<dynamicMatrix<DOFOf<T>, DOF>, MatrixType<-1, -1>, MatrixType<DOFOf<T>, DOF>>::type;
 
         /**
          * A Vector of dual components
@@ -68,7 +66,7 @@ namespace adekf {
         template<int N>
         using Derivator = Matrix<ceres::Jet<ScalarType, N>, N, 1>;
 
-        static_assert(DOF>0,"Only Fixed Size States and Manifolds are supported");
+        static_assert(DOF > 0, "Only Fixed Size States and Manifolds are supported");
 
     public:
         /**
@@ -89,8 +87,6 @@ namespace adekf {
         ADEKF(const State &_mu, const Covariance &_sigma) : mu(_mu), sigma(_sigma) {}
 
 
-
-
         /**
          * Predict the State Estimate with automatically differentiated Jacobian Matrices
          * @tparam DynamicModel Type of the Dynamic Model Functor
@@ -102,7 +98,7 @@ namespace adekf {
         template<typename DynamicModel, typename... Controls>
         void predict(DynamicModel dynamicModel, const Covariance &Q, const Controls &...u) {
             //The Jacobian to be calculated from the dynamic Model
-            JacobianOf<State> F(DOF,DOF);
+            JacobianOf<State> F(DOF, DOF);
             //Bind the control vectors to the dynamic Model
             auto f = std::bind(dynamicModel, _1, u...);
             //Add a dual component vector to the state
@@ -110,9 +106,9 @@ namespace adekf {
             //Evaluate the dynamic model
             f(input);
             //Calculate the Jacobian Matrix and set the new State Estimate
-            predict_impl(f, input, F);
+            predict_impl(input, f, input, F);
             //The dynamic model has to be differentiable
-            assert(!F.hasNaN() &&"Differentiation resulted in an indeterminate form");
+            assert(!F.hasNaN() && "Differentiation resulted in an indeterminate form");
             //Calculate the new Covariance
             sigma = F * sigma * F.transpose() + Q;
         }
@@ -130,7 +126,7 @@ namespace adekf {
         void predictWithNonAdditiveNoise(DynamicModel dynamicModel, const SquareMatrixType<NoiseDim> &Q,
                                          const Controls &...u) {
             //The Jacobian to be calculated from the dynamic Model
-            MatrixType<DOF, DOF + NoiseDim> F(DOF,DOF + NoiseDim);
+            MatrixType<DOF, DOF + NoiseDim> F(DOF, DOF + NoiseDim);
             //Bind the control vectors to the dynamic Model
             auto f = std::bind(dynamicModel, _1, _2, u...);
             //Generate a Vector of dual components for the state and noise vector
@@ -141,7 +137,7 @@ namespace adekf {
             f(input, derivator.template tail<NoiseDim>());
             //Calculate the Jacobian Matrix and set the new State Estimate
             //The noise vector gets set to zero for this
-            predict_impl(std::bind(f, _1, MatrixType<NoiseDim, 1>::Zero()), input, F);
+            predict_impl(input, std::bind(f, _1, MatrixType<NoiseDim, 1>::Zero()), input, F);
             //The dynamic model has to be differentiable
             assert(!F.hasNaN() && "Differentiation resulted in an indeterminate form");
             //Calculate the new Covariance
@@ -160,7 +156,7 @@ namespace adekf {
          * @param u Control Vectors
          */
         template<typename DynamicModel, typename JacobianFunc, typename... Controls>
-        void predictWithJacobian(DynamicModel f, JacobianFunc jacobianFunc, const Covariance &Q, const Controls & ...u) {
+        void predictWithJacobian(DynamicModel f, JacobianFunc jacobianFunc, const Covariance &Q, const Controls &...u) {
             //The Jacobian, calculated from the given function
             auto F = jacobianFunc(mu, u...);
             //Evaluate the dynamic model and set the new state estimate
@@ -181,7 +177,7 @@ namespace adekf {
          */
         template<typename Measurement, typename MeasurementModel, typename Derived, typename... Variables>
         void update(MeasurementModel measurementModel, const MatrixBase<Derived> &R, const Measurement &z,
-                    const Variables & ...variables) {
+                    const Variables &...variables) {
             //Bind the auxiliary variables to the measurement model
             auto h = std::bind(measurementModel, _1, variables...);
             //The jacobian matrix to be calculated from the measurement model
@@ -216,13 +212,13 @@ namespace adekf {
          */
         template<int NoiseDim, typename Measurement, typename MeasurementModel, typename... Variables>
         void updateWithNonAdditiveNoise(MeasurementModel measurementModel, const SquareMatrixType<NoiseDim> &R,
-                                        const Measurement &z, const Variables & ...variables) {
+                                        const Measurement &z, const Variables &...variables) {
             //The DOF of the Measurement
             constexpr int MDOF = DOFOf<Measurement>;
             //Bind the auxiliary variables to the measurement model
             auto h = std::bind(measurementModel, _1, _2, variables...);
             //The jacobian matrix to be calculated from the measurement model
-            MatrixType<MDOF, DOF + NoiseDim> H(MDOF,DOF);
+            MatrixType<MDOF, DOF + NoiseDim> H(MDOF, DOF);
             //The result of the measurement model
             Measurement hx;
             //Generate a Vector of dual components for the state and noise vector
@@ -258,7 +254,7 @@ namespace adekf {
          */
         template<typename Measurement, typename MeasurementModel, typename JacobianFunc, typename Derived, typename... Variables>
         void updateWithJacobian(MeasurementModel h, JacobianFunc jacobianFunc, const MatrixBase<Derived> &R,
-                                const Measurement &z, const Variables & ...variables) {
+                                const Measurement &z, const Variables &...variables) {
             //The jacobian matrix, calculated from the given function
             auto H = jacobianFunc(mu, variables...);
             //Calculate the Innovation covariance
@@ -286,8 +282,9 @@ namespace adekf {
          * @param variables Auxiliary Variables for the Measurement Model
          */
         template<typename Measurement, typename MeasurementModel, typename JacobianFunc, typename JacobianFuncBoxPlus, typename Derived, typename... Variables>
-        void updateManifoldWithJacobian(MeasurementModel h, JacobianFunc jacobianFunc,JacobianFuncBoxPlus jacobianFuncBoxPlus, const MatrixBase<Derived> &R,
-                                const Measurement &z, const Variables & ...variables) {
+        void updateManifoldWithJacobian(MeasurementModel h, JacobianFunc jacobianFunc,
+                                        JacobianFuncBoxPlus jacobianFuncBoxPlus, const MatrixBase<Derived> &R,
+                                        const Measurement &z, const Variables &...variables) {
             //The jacobian matrix, calculated from the given function
             auto H = jacobianFunc(mu, variables...);
             //Calculate the Innovation covariance
@@ -302,13 +299,50 @@ namespace adekf {
             //Set the new Estimated Value
             mu = newMu;
             //Calculate the new Covariance Matrix
-            sigma = D * (sigma - (K*H * sigma)) * D.transpose();
+            sigma = D * (sigma - (K * H * sigma)) * D.transpose();
 
         }
 
 
-
     private:
+
+        /**
+        * Calculation of the new Jacobian  for a CompoundManifold as State
+        * @tparam Derived The MatrixType of the Covariance
+        * @tparam ManifoldType The Type of Manifold used as State
+        * @param f The Dynamic Model f(x)
+        * @param input Result of an Addition of the State and a dual component
+        * @param F The resulting Jacobian. Calculated with dual numbers
+        */
+        template<typename Derived, typename ManifoldType, typename OtherManifoldType>
+        void calcJacobianCompoundManifold(const ManifoldType &input, const OtherManifoldType &other,
+                                          MatrixBase<Derived> &F) {
+            int dof = 0;
+            auto calcManifoldJacobian = [&](auto &manifold, auto &other) {
+                int constexpr curDOF = DOFOf<decltype(manifold)>;
+                //Calculate the Jacobian of the Boxplus Function
+                auto result = manifold - other;
+                for (int i = 0; i < curDOF; ++i) {
+                    F.row(dof + i) = result(i).v;
+                }
+                dof += curDOF;
+            };
+            //Apply on each Manifold
+            input.forEachManifoldWithOther(calcManifoldJacobian, other);
+            auto readVectorJacobian = [&](auto &vector) {
+                int constexpr curDOF = DOFOf<decltype(vector)>;
+                //Calculate the Jacobian of the vector part
+                for (int i = 0; i < curDOF; ++i) {
+                    F.row(dof + i) = vector(i).v;
+                }
+                dof += curDOF;
+            };
+            //apply on each vector part
+            input.forEachVector(readVectorJacobian);
+        }
+
+
+
         /**
          * Calculation of the new Expeted Value and Jacobian during Prediction with a Manifold as State
          * @tparam DOFandNoise The DOF of the State plus the dimension of a possible Noise Vector
@@ -318,8 +352,8 @@ namespace adekf {
          * @param input Result of an Addition of the State and a dual component
          * @param F The resulting Jacobian. Calculated with dual numbers
          */
-        template<typename Derived, typename DynamicModel, typename Manifold>
-        void predict_impl(DynamicModel f, const Manifold &input, MatrixBase<Derived> &F) {
+        template<typename Derived, typename DynamicModel, typename ManifoldType>
+        void predict_impl(const Manifold &, DynamicModel f, const ManifoldType &input, MatrixBase<Derived> &F) {
             //Set the new state estimate
             f(mu);
             //The difference of a differentiated manifold with it's identity results in the jacobian
@@ -329,6 +363,25 @@ namespace adekf {
                 F.row(i) = result[i].v;
         }
 
+
+        /**
+       * Calculation of the new Expeted Value and Jacobian during Prediction with a CompoundManifold as State
+       * @tparam Derived The MatrixType of the Covariance
+       * @tparam DynamicModel The Type of the Dynamic Model Functor
+       * @tparam ManifoldType The Type of Manifold used as State
+       * @param f The Dynamic Model f(x)
+       * @param input Result of an Addition of the State and a dual component
+       * @param F The resulting Jacobian. Calculated with dual numbers
+       */
+        template<typename Derived, typename DynamicModel, typename ManifoldType>
+        void predict_impl(const CompoundManifold &, DynamicModel f, const ManifoldType &input, MatrixBase<Derived> &F) {
+            //Set the new state estimate
+            f(mu);
+            //calculate the Jacobian
+            calcJacobianCompoundManifold(input, mu, F);
+        }
+
+
         /**
          * Calculation of the new Expeted Value and Jacobian during Prediction with a Matrix as State
          * @tparam DOFandNoise The DOF of the State plus the dimension of a possible Noise Vector
@@ -337,7 +390,8 @@ namespace adekf {
          * @param F The resulting Jacobian. Calculated with dual numbers
          */
         template<typename Derived, typename Derived2, typename DynamicModel>
-        void predict_impl(DynamicModel, const MatrixBase<Derived> &input, MatrixBase<Derived2> &F) {
+        void predict_impl(const MatrixBase<Derived> &, DynamicModel, const MatrixBase<Derived> &input,
+                          MatrixBase<Derived2> &F) {
             //The real component of the dual numbers are the result of the dynamic model
             //The dual component vectors represent the rows of the jacobian matrix
             for (int i = 0; i < DOF; ++i) {
@@ -346,13 +400,29 @@ namespace adekf {
             }
         }
 
+
         /**
-         * Calculation of the Observation and Jacobian during Update with a Manifold as Measurement
-         * @tparam MDOF The DOF of the Measurement
-         * @tparam DOFandNoise The DOF of the State plus the dimension of a possible Noise Vector
+         * Pass to real update_impl_
+          * @tparam Measurement The Type of Manifold used as Measurement
+         * @tparam ModelReturn The Type of the Addition between a Measurement and a dual component
+         * @tparam MeasurementModel The Type of the Measurement Model Functor
+         * @tparam Derived Type of the Covaraince Matrix
+         * @param modelResult Result of the Measurement Model
+         * @param input Result of the Measurement Model with a dual compnent added to the state
+         * @param h The Measurement Model h(x)
+         * @param H The resulting Jacobian. Calculated with dual numbers
+         */template<typename Measurement, typename ModelReturn, typename MeasurementModel, typename Derived>
+        void
+        update_impl(Measurement &modelResult, const ModelReturn &input, MeasurementModel h, MatrixBase<Derived> &H) {
+            update_impl_(modelResult, modelResult, input, h, H);
+        }
+
+        /**
+         * Calculation of the Observation and Jacobian during Update with a CompoundManifold as Measurement
          * @tparam Measurement The Type of Manifold used as Measurement
          * @tparam ModelReturn The Type of the Addition between a Measurement and a dual component
          * @tparam MeasurementModel The Type of the Measurement Model Functor
+         * @tparam Derived Type of the Covaraince Matrix
          * @param modelResult Result of the Measurement Model
          * @param input Result of the Measurement Model with a dual compnent added to the state
          * @param h The Measurement Model h(x)
@@ -360,15 +430,39 @@ namespace adekf {
          */
         template<typename Measurement, typename ModelReturn, typename MeasurementModel, typename Derived>
         void
-        update_impl(Measurement &modelResult, const ModelReturn &input, MeasurementModel h, MatrixBase<Derived> &H) {
+        update_impl_(const CompoundManifold &, Measurement &modelResult, const ModelReturn &input, MeasurementModel h,
+                     MatrixBase<Derived> &H) {
             //Set the observation to the result of the measurement model
             modelResult = h(mu);
-            //The difference of a differentiated manifold with it's identity results in the jacobian
-            auto result = input - modelResult;
-            //The dual component vectors represent the rows of the jacobian matrix
-            for (int i = 0; i < DOFOf<Measurement>; ++i)
-                H.row(i) = result[i].v;
+            //calculate the Jacobian
+            calcJacobianCompoundManifold(input, modelResult, H);
         }
+
+        /**
+         * Calculation of the Observation and Jacobian during Update with a Manifold as Measurement
+         * @tparam Measurement The Type of Manifold used as Measurement
+         * @tparam ModelReturn The Type of the Addition between a Measurement and a dual component
+         * @tparam MeasurementModel The Type of the Measurement Model Functor
+         * @tparam Derived Type of the Covaraince Matrix
+         * @param modelResult Result of the Measurement Model
+         * @param input Result of the Measurement Model with a dual compnent added to the state
+         * @param h The Measurement Model h(x)
+         * @param H The resulting Jacobian. Calculated with dual numbers
+         */
+        template<typename Measurement, typename ModelReturn, typename MeasurementModel, typename Derived>
+        void
+        update_impl_(const Manifold &, Measurement &modelResult, const ModelReturn &input, MeasurementModel h,
+                     MatrixBase<Derived> &H) {
+            //Set the observation to the result of the measurement model
+            modelResult = h(mu);
+            //calculate the Jacobian
+            auto result = input - modelResult;
+            for (int i = 0; i < DOF; ++i) {
+                H.row(i) = result(i).v;
+            }
+
+        }
+
 
         /**
          * Calculation of the Observation and Jacobian during Update with a Matrix as Measurement
@@ -381,8 +475,9 @@ namespace adekf {
          * @param H The resulting Jacobian. Calculated with dual numbers
          */
         template<int MDOF, typename ModelReturn, typename MeasurementModel, typename Derived>
-        void update_impl(MatrixType<MDOF, 1> &modelResult, const ModelReturn &input, MeasurementModel,
-                         MatrixBase<Derived> &H) {
+        void update_impl_(const MatrixType<MDOF, 1> &, MatrixType<MDOF, 1> &modelResult, const ModelReturn &input,
+                          MeasurementModel,
+                          MatrixBase<Derived> &H) {
             //The real component of the dual numbers are the result of the measurement model
             //The dual component vectors represent the rows of the jacobian matrix
             for (int i = 0; i < MDOF; ++i) {
@@ -391,9 +486,18 @@ namespace adekf {
             }
         }
 
+        /** update implementation for scalar measurements
+        * @tparam ModelReturn The Type of the Addition between a Measurement and a dual component
+        * @tparam MeasurementModel The Type of the Measurement Model Functor
+        * @tparam Derived Type of the Covaraince Matrix
+        * @param modelResult Result of the Measurement Model
+        * @param input Result of the Measurement Model with a dual compnent added to the state
+        * @param h The Measurement Model h(x)
+        * @param H The resulting Jacobian. Calculated with dual numbers
+        */
         template<typename ModelReturn, typename MeasurementModel, typename Derived>
-        void update_impl(ScalarType &modelResult, ModelReturn &input, MeasurementModel,
-                         MatrixBase<Derived> &H) {
+        void update_impl_(const ScalarType &, ScalarType &modelResult, ModelReturn &input, MeasurementModel,
+                          MatrixBase<Derived> &H) {
             //The real component of the dual numbers are the result of the measurement model
             //The dual component vectors represent the rows of the jacobian matrix
             H.row(0) = input.v;
@@ -414,7 +518,7 @@ namespace adekf {
             //Calculate the Jacobian of the Boxplus Function
             auto plus_diff = eval(((mu + getDerivator<DOF>()) + diff) - newMu);
             //Definition of the Jacobian of the Boxplus Function
-            JacobianOf<State> D(DOF,DOF);
+            JacobianOf<State> D(DOF, DOF);
             //Initialise the Jacobian
             for (int i = 0; i < DOF; ++i)
                 D.row(i) = plus_diff[i].v;
@@ -439,18 +543,22 @@ namespace adekf {
             //Add the Difference on the Estimated State
             State newMu = mu + diff;
             //Definition of the Jacobian of the Boxplus Function
-            JacobianOf<State> D=D.Identity(DOF,DOF);
-            int dof=0;
-            auto calcManifoldJacobian=[&](auto & manifold){
-                int constexpr curDOF=DOFOf<decltype(manifold)>;
+            JacobianOf<State> D = D.Identity(DOF, DOF);
+            //Counter for the current dof at iterating
+            int dof = 0;
+            //calculate the part of the Jacobian which belongs to the Manifold
+            auto calcManifoldJacobian = [&](auto &manifold) {
+                int constexpr curDOF = DOFOf<decltype(manifold)>;
                 //Calculate the Jacobian of the Boxplus Function
-                auto plus_diff = eval(((manifold + getDerivator<curDOF>()) + diff.template segment<curDOF>(dof) - manifold));
-                for(int i=0; i < curDOF; ++i){
-                    D.template block<1,curDOF>(dof+i,dof)=plus_diff[i].v;
+                auto plus_diff = eval(
+                        ((manifold + getDerivator<curDOF>()) + diff.template segment<curDOF>(dof) - manifold));
+                for (int i = 0; i < curDOF; ++i) {
+                    D.template block<1, curDOF>(dof + i, dof) = plus_diff[i].v;
                 }
 
-                dof+=curDOF;
+                dof += curDOF;
             };
+            //apply on each manifold, for vectors the Jacobian is the Identity
             mu.forEachManifold(calcManifoldJacobian);
 
             //Set the new Estimated Value
@@ -495,7 +603,7 @@ namespace adekf {
      * General Deduction Template for the ADEKF based on StateRetriever.
      * This is needed so you can type ADEKF ekf(State,COV) without template arguments
      */
-    template<typename DERIVED,typename COV_TYPE>
-    ADEKF(const DERIVED &, const COV_TYPE & ) -> ADEKF<typename StateInfo<DERIVED>::type >;
+    template<typename DERIVED, typename COV_TYPE>
+    ADEKF(const DERIVED &, const COV_TYPE &) -> ADEKF<typename StateInfo<DERIVED>::type>;
 
 }
