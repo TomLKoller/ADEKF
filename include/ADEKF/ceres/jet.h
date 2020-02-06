@@ -206,10 +206,9 @@ namespace ceres {
         // to be passed in without being fully evaluated until
         // they are assigned to v
         template<typename Derived>
-        EIGEN_STRONG_INLINE Jet(const T &a, const Eigen::DenseBase<Derived> &v)
+        EIGEN_STRONG_INLINE Jet(const T &a,const Eigen::DenseBase<Derived> &v)
                 : a(a), v(v) {
         }
-
         // Compound operators
         Jet<T, N> &operator+=(const Jet<T, N> &y) {
             *this = *this + y;

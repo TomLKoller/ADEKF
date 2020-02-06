@@ -105,6 +105,8 @@ namespace adekf {
             auto input = eval(mu + getDerivator<DOF>());
             //Evaluate the dynamic model
             f(input);
+            std::cout << "input and mu in predict "<<input <<mu << std::endl;
+            std::cout << "input and mu in predict "<<input <<mu << std::endl;
             //Calculate the Jacobian Matrix and set the new State Estimate
             predict_impl(input, f, input, F);
             //The dynamic model has to be differentiable
@@ -315,7 +317,7 @@ namespace adekf {
         * @param F The resulting Jacobian. Calculated with dual numbers
         */
         template<typename Derived, typename ManifoldType, typename OtherManifoldType>
-        void calcJacobianCompoundManifold(const ManifoldType &input, const OtherManifoldType &other,
+        void calcJacobianCompoundManifold(const ManifoldType &input, const OtherManifoldType &otherManifold,
                                           MatrixBase<Derived> &F) {
             int dof = 0;
             auto calcManifoldJacobian = [&](auto &manifold, auto &other) {
@@ -328,7 +330,7 @@ namespace adekf {
                 dof += curDOF;
             };
             //Apply on each Manifold
-            input.forEachManifoldWithOther(calcManifoldJacobian, other);
+            input.forEachManifoldWithOther(calcManifoldJacobian, otherManifold);
             auto readVectorJacobian = [&](auto &vector) {
                 int constexpr curDOF = DOFOf<decltype(vector)>;
                 //Calculate the Jacobian of the vector part
@@ -354,9 +356,11 @@ namespace adekf {
          */
         template<typename Derived, typename DynamicModel, typename ManifoldType>
         void predict_impl(const Manifold &, DynamicModel f, const ManifoldType &input, MatrixBase<Derived> &F) {
+            std::cout << "input and mu" <<input << mu << std::endl;
             //Set the new state estimate
             f(mu);
             //The difference of a differentiated manifold with it's identity results in the jacobian
+
             auto result = input - mu;
             //The dual component vectors represent the rows of the jacobian matrix
             for (int i = 0; i < DOF; ++i)
@@ -373,13 +377,13 @@ namespace adekf {
        * @param input Result of an Addition of the State and a dual component
        * @param F The resulting Jacobian. Calculated with dual numbers
        */
-        template<typename Derived, typename DynamicModel, typename ManifoldType>
+      /*  template<typename Derived, typename DynamicModel, typename ManifoldType>
         void predict_impl(const CompoundManifold &, DynamicModel f, const ManifoldType &input, MatrixBase<Derived> &F) {
             //Set the new state estimate
             f(mu);
             //calculate the Jacobian
             calcJacobianCompoundManifold(input, mu, F);
-        }
+        }*/
 
 
         /**
@@ -428,7 +432,7 @@ namespace adekf {
          * @param h The Measurement Model h(x)
          * @param H The resulting Jacobian. Calculated with dual numbers
          */
-        template<typename Measurement, typename ModelReturn, typename MeasurementModel, typename Derived>
+        /*template<typename Measurement, typename ModelReturn, typename MeasurementModel, typename Derived>
         void
         update_impl_(const CompoundManifold &, Measurement &modelResult, const ModelReturn &input, MeasurementModel h,
                      MatrixBase<Derived> &H) {
@@ -436,7 +440,7 @@ namespace adekf {
             modelResult = h(mu);
             //calculate the Jacobian
             calcJacobianCompoundManifold(input, modelResult, H);
-        }
+        }*/
 
         /**
          * Calculation of the Observation and Jacobian during Update with a Manifold as Measurement
