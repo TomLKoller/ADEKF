@@ -103,13 +103,11 @@ namespace adekf {
             auto f = std::bind(dynamicModel, _1, u...);
             //Add a dual component vector to the state
             auto input = eval(mu + getDerivator<DOF>());
-            std::cout << "unput + deriv" <<input << std::endl;
              //Evaluate the dynamic model
             f(input);
-            std::cout << "input and mu in predict "<<input <<mu << std::endl;
-            std::cout << "input and mu in predict "<<input <<mu << std::endl;
             //Calculate the Jacobian Matrix and set the new State Estimate
             predict_impl(input, f, input, F);
+
             //The dynamic model has to be differentiable
             assert(!F.hasNaN() && "Differentiation resulted in an indeterminate form");
             //Calculate the new Covariance
@@ -357,7 +355,6 @@ namespace adekf {
          */
         template<typename Derived, typename DynamicModel, typename ManifoldType>
         void predict_impl(const Manifold &, DynamicModel f, const ManifoldType &input, MatrixBase<Derived> &F) {
-            std::cout << "input and mu" <<input << mu << std::endl;
             //Set the new state estimate
             f(mu);
             //The difference of a differentiated manifold with it's identity results in the jacobian
@@ -380,7 +377,6 @@ namespace adekf {
        */
        template<typename Derived, typename DynamicModel, typename ManifoldType>
         void predict_impl(const CompoundManifold &, DynamicModel f, const ManifoldType &input, MatrixBase<Derived> &F) {
-            std::cout << "input and mu" <<input << mu << std::endl;
             //Set the new state estimate
             f(mu);
             //calculate the Jacobian

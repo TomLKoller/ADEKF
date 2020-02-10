@@ -74,7 +74,7 @@ struct defaultValue<Eigen::MatrixBase<DERIVED> >{
 #define ADEKF_SETTERS(name) name=arg_##name;
 #define ADEKF_DEFAULT_SETTERS(name) name=defaultValue<typename adekf::StateInfo<decltype(name)>::type>::default_value;
 #define ADEKF_DEFAULT_CONSTRUCTOR_SETTERS(name) name(defaultValue<typename adekf::StateInfo<decltype(name)>::type>::default_value)
-
+#define ADEKF_COPY_CONSTRUCTOR(name) name(other.name)
 #define ADEKF_ADD_DOF(name) + ADEKF_GETDOF(name)
 
 #define ADEKF_PLUS_OUTPUT(r, state) ADEKF_PLUS_OUTPUT_IMPL state
@@ -100,12 +100,15 @@ name<T>( \
     ) : \
     ADEKF_TRANSFORM_COMMA(ADEKF_CONSTRUCTOR_SETTERS,m_members)  BOOST_PP_COMMA_IF(ADEKF_SEQ_NOT_EMPTY(m_members)) vector_part() ADEKF_IF_SEQ_NOT_EMPTY(v_members,ADEKF_RECURSIVE,v_members,ADEKF_MAP_OUTPUT)  {\
     ADEKF_TRANSFORM(ADEKF_SETTERS,v_members)\
-}
+}\
+name<T>(const name<T> & other):ADEKF_TRANSFORM_COMMA(ADEKF_COPY_CONSTRUCTOR,m_members)BOOST_PP_COMMA_IF(ADEKF_SEQ_NOT_EMPTY(m_members)) vector_part(other.vector_part) ADEKF_IF_SEQ_NOT_EMPTY(v_members,ADEKF_RECURSIVE,v_members,ADEKF_MAP_OUTPUT){}
+
 #define ADEKF_VECTOR_CONSTRUCTOR(name, m_members,v_members)\
 name<T>( \
     ADEKF_TRANSFORM_COMMA(ADEKF_CONSTRUCTOR_ARGS_NO_DEFAULT,m_members) BOOST_PP_COMMA_IF(ADEKF_SEQ_NOT_EMPTY(m_members)) const decltype(vector_part) & arg_vector_part \
     ) : \
     ADEKF_TRANSFORM_COMMA(ADEKF_CONSTRUCTOR_SETTERS,m_members)  BOOST_PP_COMMA_IF(ADEKF_SEQ_NOT_EMPTY(m_members)) vector_part(arg_vector_part) ADEKF_IF_SEQ_NOT_EMPTY(v_members,ADEKF_RECURSIVE,v_members,ADEKF_MAP_OUTPUT)  {}
+
 
 #define ADEKF_DEDUCTION_RESULT_IMPL(name,member) name<typename adekf::StateInfo<TYPE_##member>::ScalarType >
 #define ADEKF_DEDUCTION_RESULT(name,member) ADEKF_DEDUCTION_RESULT_IMPL(name,member)
