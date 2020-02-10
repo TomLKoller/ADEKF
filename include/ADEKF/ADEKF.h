@@ -103,7 +103,8 @@ namespace adekf {
             auto f = std::bind(dynamicModel, _1, u...);
             //Add a dual component vector to the state
             auto input = eval(mu + getDerivator<DOF>());
-            //Evaluate the dynamic model
+            std::cout << "unput + deriv" <<input << std::endl;
+             //Evaluate the dynamic model
             f(input);
             std::cout << "input and mu in predict "<<input <<mu << std::endl;
             std::cout << "input and mu in predict "<<input <<mu << std::endl;
@@ -377,13 +378,14 @@ namespace adekf {
        * @param input Result of an Addition of the State and a dual component
        * @param F The resulting Jacobian. Calculated with dual numbers
        */
-      /*  template<typename Derived, typename DynamicModel, typename ManifoldType>
+       template<typename Derived, typename DynamicModel, typename ManifoldType>
         void predict_impl(const CompoundManifold &, DynamicModel f, const ManifoldType &input, MatrixBase<Derived> &F) {
+            std::cout << "input and mu" <<input << mu << std::endl;
             //Set the new state estimate
             f(mu);
             //calculate the Jacobian
             calcJacobianCompoundManifold(input, mu, F);
-        }*/
+        }
 
 
         /**
@@ -432,7 +434,7 @@ namespace adekf {
          * @param h The Measurement Model h(x)
          * @param H The resulting Jacobian. Calculated with dual numbers
          */
-        /*template<typename Measurement, typename ModelReturn, typename MeasurementModel, typename Derived>
+        template<typename Measurement, typename ModelReturn, typename MeasurementModel, typename Derived>
         void
         update_impl_(const CompoundManifold &, Measurement &modelResult, const ModelReturn &input, MeasurementModel h,
                      MatrixBase<Derived> &H) {
@@ -440,7 +442,7 @@ namespace adekf {
             modelResult = h(mu);
             //calculate the Jacobian
             calcJacobianCompoundManifold(input, modelResult, H);
-        }*/
+        }
 
         /**
          * Calculation of the Observation and Jacobian during Update with a Manifold as Measurement

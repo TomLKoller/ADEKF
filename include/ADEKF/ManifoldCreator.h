@@ -33,7 +33,7 @@
 
 
 #define ADEKF_RECURSIVE(seq, output_function) \
-BOOST_PP_FOR( \
+BOOST_PP_FOR_1( \
 		( \
 				BOOST_PP_SEQ_SIZE(seq), \
 				BOOST_PP_SEQ_HEAD(seq), \
@@ -72,6 +72,8 @@ struct defaultValue<Eigen::MatrixBase<DERIVED> >{
 
 #define ADEKF_CONSTRUCTOR_SETTERS(name) name(arg_##name)
 #define ADEKF_SETTERS(name) name=arg_##name;
+#define ADEKF_DEFAULT_SETTERS(name) name=defaultValue<typename adekf::StateInfo<decltype(name)>::type>::default_value;
+#define ADEKF_DEFAULT_CONSTRUCTOR_SETTERS(name) name(defaultValue<typename adekf::StateInfo<decltype(name)>::type>::default_value)
 
 #define ADEKF_ADD_DOF(name) + ADEKF_GETDOF(name)
 
@@ -91,13 +93,19 @@ struct defaultValue<Eigen::MatrixBase<DERIVED> >{
 ///////////////////////////////////////////////////////////
 
 #define ADEKF_CONSTRUCTOR(name, m_members,v_members) \
-explicit name<T>( \
-    ADEKF_TRANSFORM_COMMA(ADEKF_CONSTRUCTOR_ARGS,m_members) BOOST_PP_COMMA_IF(BOOST_PP_BITAND(ADEKF_SEQ_NOT_EMPTY(m_members),ADEKF_SEQ_NOT_EMPTY(v_members))) ADEKF_TRANSFORM_COMMA(ADEKF_CONSTRUCTOR_ARGS,v_members) \
+name<T>():ADEKF_TRANSFORM_COMMA(ADEKF_DEFAULT_CONSTRUCTOR_SETTERS,m_members)  BOOST_PP_COMMA_IF(ADEKF_SEQ_NOT_EMPTY(m_members)) vector_part() ADEKF_IF_SEQ_NOT_EMPTY(v_members,ADEKF_RECURSIVE,v_members,ADEKF_MAP_OUTPUT) {\
+ADEKF_TRANSFORM(ADEKF_DEFAULT_SETTERS,v_members)}\
+name<T>( \
+    ADEKF_TRANSFORM_COMMA(ADEKF_CONSTRUCTOR_ARGS_NO_DEFAULT,m_members) BOOST_PP_COMMA_IF(BOOST_PP_BITAND(ADEKF_SEQ_NOT_EMPTY(m_members),ADEKF_SEQ_NOT_EMPTY(v_members))) ADEKF_TRANSFORM_COMMA(ADEKF_CONSTRUCTOR_ARGS_NO_DEFAULT,v_members) \
     ) : \
     ADEKF_TRANSFORM_COMMA(ADEKF_CONSTRUCTOR_SETTERS,m_members)  BOOST_PP_COMMA_IF(ADEKF_SEQ_NOT_EMPTY(m_members)) vector_part() ADEKF_IF_SEQ_NOT_EMPTY(v_members,ADEKF_RECURSIVE,v_members,ADEKF_MAP_OUTPUT)  {\
     ADEKF_TRANSFORM(ADEKF_SETTERS,v_members)\
 }
-
+#define ADEKF_VECTOR_CONSTRUCTOR(name, m_members,v_members)\
+name<T>( \
+    ADEKF_TRANSFORM_COMMA(ADEKF_CONSTRUCTOR_ARGS_NO_DEFAULT,m_members) BOOST_PP_COMMA_IF(ADEKF_SEQ_NOT_EMPTY(m_members)) const decltype(vector_part) & arg_vector_part \
+    ) : \
+    ADEKF_TRANSFORM_COMMA(ADEKF_CONSTRUCTOR_SETTERS,m_members)  BOOST_PP_COMMA_IF(ADEKF_SEQ_NOT_EMPTY(m_members)) vector_part(arg_vector_part) ADEKF_IF_SEQ_NOT_EMPTY(v_members,ADEKF_RECURSIVE,v_members,ADEKF_MAP_OUTPUT)  {}
 
 #define ADEKF_DEDUCTION_RESULT_IMPL(name,member) name<typename adekf::StateInfo<TYPE_##member>::ScalarType >
 #define ADEKF_DEDUCTION_RESULT(name,member) ADEKF_DEDUCTION_RESULT_IMPL(name,member)
@@ -109,7 +117,7 @@ explicit name<T>( \
 
 
 
-#define ADEKF_BOXPLUS(name, members) \
+/*#define ADEKF_BOXPLUS(name, members) \
 template<typename T2> \
 name<ADEKF_PLUSRESULT(T,T2)> operator+(const Eigen::Matrix<T2, DOF, 1>& __delta) const { \
     return name<ADEKF_PLUSRESULT(T,T2)>(BOOST_PP_SEQ_ENUM(ADEKF_RECURSIVE(members,ADEKF_PLUS_OUTPUT))); \
@@ -120,15 +128,13 @@ name<ADEKF_PLUSRESULT(T,T2)> operator+(const Eigen::Matrix<T2, DOF, 1>& __delta)
 template<typename T2> \
 Eigen::Matrix<ADEKF_MINUSRESULT(T,T2),DOF,1> operator-(const name<T2>& __other) const { \
     Eigen::Matrix<ADEKF_MINUSRESULT(T,T2),DOF,1> __result;ADEKF_RECURSIVE(members,ADEKF_MINUS_OUTPUT)return __result;\
-}
+}*/
 
 
-/*#define ADEKF_BOXPLUS(name, m_members, v_members) \
+#define ADEKF_BOXPLUS(name, m_members, v_members) \
 template<typename T2> \
 name<ADEKF_PLUSRESULT(T,T2)> operator+(const Eigen::Matrix<T2, DOF, 1>& __delta) const { \
-     name<ADEKF_PLUSRESULT(T,T2)> __temp(ADEKF_IF_SEQ_NOT_EMPTY(m_members,ADEKF_RECURSIVE,m_members,ADEKF_PLUS_OUTPUT)); \
-     __temp.vector_part=vector_part+__delta.template segment<VEC_DOF>(MAN_DOF);\
-     return __temp;\
+     return name<ADEKF_PLUSRESULT(T,T2)>{ADEKF_IF_SEQ_NOT_EMPTY(m_members,ADEKF_RECURSIVE,m_members,ADEKF_PLUS_OUTPUT),vector_part+__delta.template segment<VEC_DOF>(MAN_DOF)}; \
 }
 
 
@@ -136,7 +142,7 @@ name<ADEKF_PLUSRESULT(T,T2)> operator+(const Eigen::Matrix<T2, DOF, 1>& __delta)
 template<typename T2> \
 Eigen::Matrix<ADEKF_MINUSRESULT(T,T2),DOF,1> operator-(const name<T2>& __other) const { \
     Eigen::Matrix<ADEKF_MINUSRESULT(T,T2),DOF,1> __result;ADEKF_IF_SEQ_NOT_EMPTY(m_members,ADEKF_RECURSIVE,m_members,ADEKF_MINUS_OUTPUT) __result.template segment<VEC_DOF>(MAN_DOF)=vector_part-__other.vector_part;return __result;\
-}*/
+}
 
 #define CALL_FUNCTION_ON_MEMBER(r,data,name)  BOOST_PP_TUPLE_ELEM(0,data) (name,BOOST_PP_TUPLE_ELEM(1,data)...);
 #define CALL_FUNCTION_ON_MEMBER_WITH_OTHER(r,data,name)  BOOST_PP_TUPLE_ELEM(0,data) (name,BOOST_PP_TUPLE_ELEM(2,data). name,BOOST_PP_TUPLE_ELEM(1,data)...);
@@ -153,9 +159,9 @@ FOR_EACH_IF_NOT_EMPTY(CALL_FUNCTION_ON_MEMBER_WITH_OTHER,(functor,args,other),m_
 
 
 
-#define ADEKF_OUTSTREAM(name, members) \
+#define ADEKF_OUTSTREAM(name, m_members) \
 friend std::ostream& operator<<(std::ostream& __stream, const name& __state) { \
-    return __stream ADEKF_TRANSFORM(ADEKF_OUTSTREAM_IMPL,members); \
+    return __stream ADEKF_TRANSFORM(ADEKF_OUTSTREAM_IMPL,m_members) << __state.vector_part; \
 }
 
 #define ADEKF_INSTREAM(name, members) \
@@ -167,19 +173,21 @@ friend std::istream& operator>>(std::istream& __stream, name& __state) { \
 
 #define ADEKF_CONSTRUCT_MANIFOLD_INTERNAL(name, m_members, v_members) \
 ADEKF_CONSTRUCTOR(name, m_members, v_members) \
+BOOST_PP_REMOVE_PARENS(BOOST_PP_EXPR_IF(BOOST_PP_GREATER(BOOST_PP_SEQ_SIZE(v_members),1),(ADEKF_VECTOR_CONSTRUCTOR(name,m_members,v_members))))\
 using ScalarType = T; \
-static constexpr unsigned DOF = VEC_DOF ADEKF_TRANSFORM(ADEKF_ADD_DOF,m_members); \
-ADEKF_BOXPLUS(name, m_members v_members) \
-ADEKF_BOXMINUS(name, m_members v_members) \
+static constexpr unsigned MAN_DOF=0 ADEKF_TRANSFORM(ADEKF_ADD_DOF,m_members);\
+static constexpr unsigned DOF = VEC_DOF +MAN_DOF; \
+ADEKF_BOXPLUS(name, m_members, v_members) \
+ADEKF_BOXMINUS(name, m_members, v_members) \
 ADEKF_FOREACH(name,m_members v_members, forEach)\
 ADEKF_FOREACH(name,m_members, forEachManifold)\
 ADEKF_FOREACH(name,v_members, forEachVector)\
-ADEKF_OUTSTREAM(name, m_members v_members) \
-ADEKF_INSTREAM(name, m_members v_members) \
+ADEKF_OUTSTREAM(name, m_members) \
 EIGEN_MAKE_ALIGNED_OPERATOR_NEW\
 };\
 	ADEKF_DEDUCTION_GUIDE(name,m_members v_members)
 
+//ADEKF_INSTREAM(name, m_members, v_members) \
 
 
 
