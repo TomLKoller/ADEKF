@@ -20,8 +20,6 @@
 #define TRANSFORM_IF_NOT_EMPTY(macro,data,sequence) ADEKF_IF_SEQ_NOT_EMPTY(sequence,BOOST_PP_SEQ_TRANSFORM_S,1,macro,data,sequence)
 #define FOR_EACH_IF_NOT_EMPTY(macro,data,sequence)  ADEKF_IF_SEQ_NOT_EMPTY(sequence,BOOST_PP_SEQ_FOR_EACH_R,1,macro,data,sequence)
 
-#define ADEKF_TO_ENUM(r,macro,data,sequence) BOOST_PP_SEQ_ENUM(sequence)
-
 #define ADEKF_APPLY_MACRO_ON_TUPLE(r, macro, tuple) macro (tuple)
 
 //fix for empty sequence
@@ -76,6 +74,7 @@ struct defaultValue<Eigen::MatrixBase<DERIVED> >{
 #define ADEKF_DEFAULT_CONSTRUCTOR_SETTERS(name) name(defaultValue<typename adekf::StateInfo<decltype(name)>::type>::default_value)
 #define ADEKF_COPY_CONSTRUCTOR(name) name(other.name)
 #define ADEKF_ADD_DOF(name) + ADEKF_GETDOF(name)
+#define ADEKF_ASSIGN(name) name=other.name;
 
 #define ADEKF_PLUS_OUTPUT(r, state) ADEKF_PLUS_OUTPUT_IMPL state
 #define ADEKF_PLUS_OUTPUT_IMPL(len, head, seq, dof) (head + __delta.template segment<ADEKF_GETDOF(head)>(dof))
@@ -88,7 +87,7 @@ struct defaultValue<Eigen::MatrixBase<DERIVED> >{
 #define ADEKF_INSTREAM_IMPL(name) >> __state.name
 
 #define ADEKF_MAP_OUTPUT(r,state) ADEKF_MAP_OUTPUT_IMPL state
-#define ADEKF_MAP_OUTPUT_IMPL(len, head, seq, dof) , head(vector_part.template block<ADEKF_GETDOF(head),1>(dof,0))
+#define ADEKF_MAP_OUTPUT_IMPL(len, head, seq, dof) , head(vector_part.template segment<ADEKF_GETDOF(head)>(dof))
 
 ///////////////////////////////////////////////////////////
 
@@ -134,10 +133,16 @@ Eigen::Matrix<ADEKF_MINUSRESULT(T,T2),DOF,1> operator-(const name<T2>& __other) 
 }*/
 
 
+#define ADEKF_ASSIGN_OP(name,m_members)\
+void operator=(const name<T> & other){\
+  ADEKF_TRANSFORM(ADEKF_ASSIGN,m_members)\
+  vector_part=other.vector_part;\
+}
+
 #define ADEKF_BOXPLUS(name, m_members, v_members) \
 template<typename T2> \
 name<ADEKF_PLUSRESULT(T,T2)> operator+(const Eigen::Matrix<T2, DOF, 1>& __delta) const { \
-     return name<ADEKF_PLUSRESULT(T,T2)>{ADEKF_IF_SEQ_NOT_EMPTY(m_members,ADEKF_RECURSIVE,m_members,ADEKF_PLUS_OUTPUT),vector_part+__delta.template segment<VEC_DOF>(MAN_DOF)}; \
+     return name<ADEKF_PLUSRESULT(T,T2)>{ADEKF_IF_SEQ_NOT_EMPTY(m_members,ADEKF_RECURSIVE,m_members,ADEKF_PLUS_OUTPUT) BOOST_PP_COMMA_IF(ADEKF_SEQ_NOT_EMPTY(m_members)) vector_part+__delta.template segment<VEC_DOF>(MAN_DOF)}; \
 }
 
 
@@ -182,6 +187,7 @@ static constexpr unsigned MAN_DOF=0 ADEKF_TRANSFORM(ADEKF_ADD_DOF,m_members);\
 static constexpr unsigned DOF = VEC_DOF +MAN_DOF; \
 ADEKF_BOXPLUS(name, m_members, v_members) \
 ADEKF_BOXMINUS(name, m_members, v_members) \
+ADEKF_ASSIGN_OP(name,m_members)\
 ADEKF_FOREACH(name,m_members v_members, forEach)\
 ADEKF_FOREACH(name,m_members, forEachManifold)\
 ADEKF_FOREACH(name,v_members, forEachVector)\
@@ -194,7 +200,7 @@ EIGEN_MAKE_ALIGNED_OPERATOR_NEW\
 
 
 
-#define ADEKF_APPLY_MACRO_ON_DUPLET(r, macro, tuple) macro   tuple  //(BOOST_PP_TUPLE_ELEM(0,tuple),BOOST_PP_TUPLE_ELEM(1,tuple))
+#define ADEKF_APPLY_MACRO_ON_DUPLET(r, macro, tuple) macro   tuple
 
 template<int VEC_DOF, int SIZE>
 struct MatrixBlock{
@@ -229,10 +235,6 @@ struct MatrixBlockWrapper{
     ADEKF_UNZIP_ATTRIBUTES(CREATE_VECTOR_ATTRIBUTE,vectors)    \
 	ADEKF_CONSTRUCT_MANIFOLD_INTERNAL(name,   ADEKF_UNZIP_ATTRIBUTES(RETURN_NAME,manifolds) , ADEKF_UNZIP_ATTRIBUTES(RETURN_NAME,vectors)) 																	\
 
-
-#define ADEKF_STATE(name, ...) template <typename T> struct name :public adekf::CompoundManifold{\
-		ADEKF_UNZIP_ATTRIBUTES(CREATE_VECTOR_ATTRIBUTE,BOOST_PP_VARIADIC_TO_SEQ( __VA_ARGS__))	\
-		ADEKF_CONSTRUCT_MANIFOLD_INTERNAL(name, ADEKF_UNZIP_ATTRIBUTES(RETURN_NAME,BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__)),)
 
 
 #define EXPAND_1(name,manifolds,...) ADEKF_MANIFOLD_BOTH(name,manifolds,BOOST_PP_VARIADIC_TO_SEQ( __VA_ARGS__))

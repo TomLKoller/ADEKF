@@ -103,7 +103,7 @@ namespace adekf {
             auto f = std::bind(dynamicModel, _1, u...);
             //Add a dual component vector to the state
             auto input = eval(mu + getDerivator<DOF>());
-             //Evaluate the dynamic model
+            //Evaluate the dynamic model
             f(input);
             //Calculate the Jacobian Matrix and set the new State Estimate
             predict_impl(input, f, input, F);
@@ -180,7 +180,9 @@ namespace adekf {
         void update(MeasurementModel measurementModel, const MatrixBase<Derived> &R, const Measurement &z,
                     const Variables &...variables) {
             //Bind the auxiliary variables to the measurement model
-            auto h = std::bind(measurementModel, _1, variables...);
+            auto h = [&measurementModel, &variables...](const auto &state) {
+                return eval(measurementModel(state, variables ...));
+            };
             //The jacobian matrix to be calculated from the measurement model
             JacobianOf<Measurement> H(DOFOf<Measurement>, DOF);
             //The result of the measurement model
@@ -217,7 +219,9 @@ namespace adekf {
             //The DOF of the Measurement
             constexpr int MDOF = DOFOf<Measurement>;
             //Bind the auxiliary variables to the measurement model
-            auto h = std::bind(measurementModel, _1, _2, variables...);
+            auto h = [&measurementModel, &variables...](const auto &state, const auto &noise) {
+                return eval(measurementModel(state,noise , variables ...));
+            };
             //The jacobian matrix to be calculated from the measurement model
             MatrixType<MDOF, DOF + NoiseDim> H(MDOF, DOF);
             //The result of the measurement model
@@ -343,7 +347,6 @@ namespace adekf {
         }
 
 
-
         /**
          * Calculation of the new Expeted Value and Jacobian during Prediction with a Manifold as State
          * @tparam DOFandNoise The DOF of the State plus the dimension of a possible Noise Vector
@@ -375,7 +378,7 @@ namespace adekf {
        * @param input Result of an Addition of the State and a dual component
        * @param F The resulting Jacobian. Calculated with dual numbers
        */
-       template<typename Derived, typename DynamicModel, typename ManifoldType>
+        template<typename Derived, typename DynamicModel, typename ManifoldType>
         void predict_impl(const CompoundManifold &, DynamicModel f, const ManifoldType &input, MatrixBase<Derived> &F) {
             //Set the new state estimate
             f(mu);
