@@ -116,7 +116,7 @@ namespace adekf {
      * @return The bypassed expression
      */
     template<typename T>
-    auto eval(const T &&result) {
+    auto eval(const T &result) {
         return result;
     }
 
@@ -130,14 +130,14 @@ namespace adekf {
      * @return The bypassed expression
      */
     template<typename BinaryOp, typename LhsType, typename RhsType>
-    auto eval(const Eigen::CwiseBinaryOp<BinaryOp, LhsType, RhsType> &&result) {
+    auto eval(const Eigen::CwiseBinaryOp<BinaryOp, LhsType, RhsType> &result) {
         //The eval() function returns the result of the operation
         //If this is not used auto will not work correctly
         return result.eval();
     }
 
     template<typename XprType, int BlockRows, int BlockCols, bool InnerPanel>
-    auto eval(const Eigen::Block< XprType, BlockRows, BlockCols, InnerPanel > && result){
+    auto eval(const Eigen::Block< XprType, BlockRows, BlockCols, InnerPanel > & result){
         return result.eval();
     }
 }
