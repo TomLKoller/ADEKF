@@ -334,16 +334,10 @@ namespace adekf {
             };
             //Apply on each Manifold
             input.forEachManifoldWithOther(calcManifoldJacobian, otherManifold);
-            auto readVectorJacobian = [&](auto &vector) {
-                int constexpr curDOF = DOFOf<decltype(vector)>;
-                //Calculate the Jacobian of the vector part
-                for (int i = 0; i < curDOF; ++i) {
-                    F.row(dof + i) = vector(i).v;
-                }
-                dof += curDOF;
-            };
-            //apply on each vector part
-            input.forEachVector(readVectorJacobian);
+            //Read vector part
+            for(int i=0; i < input.VEC_DOF; i++){
+                F.row(dof+i)=input.vector_part(i).v;
+            }
         }
 
 
