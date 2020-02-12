@@ -355,7 +355,7 @@ namespace adekf {
             //Set the new state estimate
             f(mu);
             //The difference of a differentiated manifold with it's identity results in the jacobian
-
+            printf(input,mu);
             auto result = input - mu;
             //The dual component vectors represent the rows of the jacobian matrix
             for (int i = 0; i < DOF; ++i)
@@ -374,6 +374,14 @@ namespace adekf {
        */
         template<typename Derived, typename DynamicModel, typename ManifoldType>
         void predict_impl(const CompoundManifold &, DynamicModel f, const ManifoldType &input, MatrixBase<Derived> &F) {
+            //check if state is a vector compound manifold
+            if(mu.MAN_DOF==0){
+                for (int i = 0; i < DOF; ++i) {
+                    F.row(i) = input.vector_part(i).v;
+                    mu.vector_part(i) = input.vector_part(i).a;
+                }
+                return;
+            }
             //Set the new state estimate
             f(mu);
             //calculate the Jacobian
@@ -511,7 +519,7 @@ namespace adekf {
          * @param KH The Multiplication of Kalman Gain and Measurement-Jacobian
          */
         template<typename Derived>
-        void add_diff(Manifold &, const MatrixType<DOF, 1> &diff, const MatrixBase<Derived> &KH) {
+        void add_diff(const Manifold &, const MatrixType<DOF, 1> &diff, const MatrixBase<Derived> &KH) {
             //Add the Difference on the Estimated State
             State newMu = mu + diff;
             //Calculate the Jacobian of the Boxplus Function
@@ -538,7 +546,13 @@ namespace adekf {
         * @param KH The Multiplication of Kalman Gain and Measurement-Jacobian
         */
         template<typename Derived>
-        void add_diff(CompoundManifold &, const MatrixType<DOF, 1> &diff, const MatrixBase<Derived> &KH) {
+        void add_diff(const CompoundManifold &, const MatrixType<DOF, 1> &diff, const MatrixBase<Derived> &KH) {
+            //check if compoundManifold is simple vector this may look a bit dirty but it allows to use the ADEKF_MANIFOLD for vector parts only without significant speed loss
+            if(mu.MAN_DOF==0){
+                add_diff<Derived>(diff,diff,KH);
+                return;
+            }
+
             //Add the Difference on the Estimated State
             State newMu = mu + diff;
             //Definition of the Jacobian of the Boxplus Function
@@ -574,7 +588,7 @@ namespace adekf {
          * @param KH The Multiplication of Kalman Gain and Measurement-Jacobian
          */
         template<typename Derived>
-        void add_diff(MatrixType<DOF, 1> &, const MatrixType<DOF, 1> &diff, const MatrixBase<Derived> &KH) {
+        void add_diff(const MatrixType<DOF, 1> &, const MatrixType<DOF, 1> &diff, const MatrixBase<Derived> &KH) {
             //Add the Difference on the State
             mu = mu + diff;
             //Calculate the new Covariance
