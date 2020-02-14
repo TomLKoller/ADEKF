@@ -445,7 +445,8 @@ void testSLAM(bool enableLandmarks, bool log) {
     bool seen_landmark[MaxLandmarks];
     std::fill(seen_landmark,seen_landmark+MaxLandmarks,false);
 
-    ADEKF ekf(State<double>::Zero(), Cov::Zero(StateSize, StateSize));
+    typedef Eigen::SparseMatrix<double> SparseCov;
+    ADEKF<State<double>,true> ekf(State<double>::Zero(), SparseCov(StateSize, StateSize));
 
     ADEKF ekfwj(State<double>::Zero(), Cov::Zero(StateSize, StateSize));
 
@@ -493,8 +494,10 @@ void testSLAM(bool enableLandmarks, bool log) {
 
         //std::cout << i+1 << "/" << MaxSteps << std::endl;
 
-        Cov cov = Cov::Zero(StateSize, StateSize);
-        cov.topLeftCorner<3,3>() = s.cov;
+        SparseCov cov = SparseCov(StateSize, StateSize);
+       // cov.topLeftCorner<3,3>() = s.cov;
+        auto setTopLeftCorner=adekf::LambdaVisitor([cov](auto value, auto i , auto j){cov(i,j)=value;});
+        s.cov.visit(setTopLeftCorner);
         ekf.predict(stepDyn, cov, s);
         ekf.mu(2) = fmod(ekf.mu(2), M_PI * 2);
         if(ekf.mu(2) < double(0))

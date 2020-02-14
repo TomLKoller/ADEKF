@@ -140,5 +140,61 @@ namespace adekf {
     auto eval(const Eigen::Block< XprType, BlockRows, BlockCols, InnerPanel > & result){
         return result.eval();
     }
+
+    /**
+     * This visitor collects all non zero coefficients from matrices
+     */
+    template<typename scalar>
+    struct DenseToSparseVisitor {
+            std::vector<Eigen::Triplet<scalar>> triplets;
+            scalar eps;
+
+            DenseToSparseVisitor(scalar eps) :eps(eps){}
+
+        // called for all other coefficients
+        void operator() (const scalar& value, Eigen::Index i, Eigen::Index j){
+            if(abs(value) > eps){
+                triplets.push_back(Eigen::Triplet<scalar>(i,j,value));
+            }
+        }
+
+            // called for the first coefficient
+        void init(const scalar& value, Eigen::Index i, Eigen::Index j){
+                *this(value,i,j);
+            }
+    };
+
+    template<typename lambda>
+    struct LambdaVisitor{
+        lambda function;
+        LambdaVisitor(lambda function):function(function){
+
+        }
+        template<typename scalar>
+        void operator() (const scalar& value, Eigen::Index i, Eigen::Index j){
+            lambda(value,i,j);
+        }
+
+        // called for the first coefficient
+        template<typename scalar>
+        void init(const scalar& value, Eigen::Index i, Eigen::Index j){
+            lambda(value,i,j);
+        }
+    };
+
+    /**
+     * Converts a dense matrix to a scalar matrix
+     * @param matrix the matrix to convert
+     * @param eps A threshold what counts as 0
+     * @return a sparse matrix with the same values as matrix except for |values| <eps
+     */
+    template<typename scalar,int rows, int cols>
+    Eigen::SparseMatrix<scalar> convertToSparse(const Eigen::Matrix<scalar,rows,cols> &matrix, scalar eps){
+        Eigen::SparseMatrix<scalar> result(rows,cols);
+        auto visitor=DenseToSparseVisitor(eps);
+        matrix.visit(visitor);
+        result.setFromTriplets(visitor.triplets.begin(),visitor.triplets.end());
+        return result;
+    }
 }
 
