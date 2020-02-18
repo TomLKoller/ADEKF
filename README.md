@@ -19,6 +19,17 @@ if you use this implementation in a published work.
 ## Installation
 Installation is not required since it is a header only library. You can simply #include the headers.
 
+However, if you want convenient access to the library you can use the provided cmake file to install the headers via:
+```
+mkdir build
+cd build
+cmake ..
+sudo make install 
+```
+
+You can then use the package ADEKF as it is shown in the [example cmake file](examples/velocity_without_orientation_tracking/CMakeLists.txt)
+
+
 ## Prerequisites
 To use this software you should know how to:
 1. program in C++ 
