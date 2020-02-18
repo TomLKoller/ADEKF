@@ -355,7 +355,6 @@ namespace adekf {
             //Set the new state estimate
             f(mu);
             //The difference of a differentiated manifold with it's identity results in the jacobian
-            printf(input,mu);
             auto result = input - mu;
             //The dual component vectors represent the rows of the jacobian matrix
             for (int i = 0; i < DOF; ++i)
@@ -603,10 +602,17 @@ namespace adekf {
         template<unsigned Size>
         static Derivator<Size> getDerivator() {
             //The resulting dual component vector
-            Derivator<Size> result;
+            static Derivator<Size> result;
+            //only set on first call
+            static bool first_call=true;
+            //std::cout << result[0].v <<std::endl;
             //Set the first coefficient in the first row to 1, the second in the second and so on.
-            for (unsigned i = 0; i < Size; ++i)
-                result[i] = ceres::Jet<ScalarType, Size>(0, i);
+            if(first_call) {
+                result.setZero();
+                for (unsigned i = 0; i < Size; ++i)
+                    result[i].v[i] = 1;// = ceres::Jet<ScalarType, Size>(0, i);
+                first_call=false;
+            }
             return result;
         }
     };

@@ -258,15 +258,19 @@ public:
         landmarks.emplace_back(meas);
     }
 };
+#define DO_FULL_TEST
 
 //constexpr unsigned MaxLandmarks = 62;
-constexpr unsigned MaxLandmarks = 62;
-//constexpr unsigned MaxLandmarks = 589;
-constexpr unsigned StateSize =  3+(MaxLandmarks*2);
-
-//constexpr unsigned MaxSteps = 195;
-constexpr unsigned MaxSteps = 195;
+#ifdef DO_FULL_TEST
+constexpr unsigned MaxLandmarks = 589;
 //constexpr unsigned MaxSteps = 3297;
+constexpr unsigned MaxSteps = 5;
+#else
+constexpr unsigned MaxLandmarks = 62;
+constexpr unsigned MaxSteps = 195;
+#endif
+constexpr unsigned StateSize =  3+(MaxLandmarks*2);
+//constexpr unsigned MaxSteps = 195;
 
 template<typename T = double>
 using State = Matrix<T, StateSize,1>;
@@ -449,7 +453,6 @@ void testSLAM(bool enableLandmarks, bool log) {
 
     ADEKF ekfwj(State<double>::Zero(), Cov::Zero(StateSize, StateSize));
 
-    ukfom::ukf<StateMTK> ukf(StateMTK::Zero(), Cov::Zero(StateSize,StateSize));
 
     auto epoch = std::chrono::high_resolution_clock::now();
 
@@ -519,7 +522,12 @@ void testSLAM(bool enableLandmarks, bool log) {
     mseconds = std::chrono::duration_cast<std::chrono::milliseconds>(now - epoch).count();
     std::cout << "ekf: " << mseconds << " ms" << std::endl;
 
+
+
     std::fill(seen_landmark,seen_landmark+MaxLandmarks,false);
+#ifndef DO_FULL_TEST
+    ukfom::ukf<StateMTK> ukf(StateMTK::Zero(), Cov::Zero(StateSize,StateSize));
+
 
     epoch = std::chrono::high_resolution_clock::now();
     for(unsigned i = 0; i < MaxSteps; i++) {
@@ -550,17 +558,23 @@ void testSLAM(bool enableLandmarks, bool log) {
     mseconds = std::chrono::duration_cast<std::chrono::milliseconds>(now - epoch).count();
     std::cout << "ukf: " << mseconds << " ms" << std::endl;
 
+#endif
+
     std::cout.precision(17);
     std::cout << ekfwj.mu.head<3>().format(IOFormat(FullPrecision)) << std::endl << std::endl;
     std::cout << ekf.mu.head<3>().format(IOFormat(FullPrecision)) << std::endl << std::endl;
+#ifndef DO_FULL_TEST
     std::cout << ukf.mu_.head<3>().format(IOFormat(FullPrecision)) << std::endl;
+#endif
     std::cout << "----------END TEST SLAM----------" << std::endl;
 
     if(log && enableLandmarks) {
         for(unsigned idx = 3; idx < StateSize; idx = idx + 2) {
             slam_ekf_map << ekfwj.mu[idx] << ";" << ekfwj.mu[idx+1] << std::endl;
             slam_adekf_map << ekf.mu[idx] << ";" << ekf.mu[idx+1] << std::endl;
+#ifndef DO_FULL_TEST
             slam_ukf_map << ukf.mu_[idx] << ";" << ukf.mu_[idx+1] << std::endl;
+#endif
         }
     }
 
@@ -583,6 +597,6 @@ void testSLAM(bool enableLandmarks, bool log) {
 }
 
 int main() {
-    testHanddataset(false, 1);
+   // testHanddataset(false, 1);
     testSLAM(true,false);
 }
