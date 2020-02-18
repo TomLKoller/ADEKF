@@ -355,7 +355,6 @@ namespace adekf {
             //Set the new state estimate
             f(mu);
             //The difference of a differentiated manifold with it's identity results in the jacobian
-            printf(input,mu);
             auto result = input - mu;
             //The dual component vectors represent the rows of the jacobian matrix
             for (int i = 0; i < DOF; ++i)
@@ -606,7 +605,6 @@ namespace adekf {
             static Eigen::Matrix<ceres::Jet<double, Size>, Size, 1> result;
             //only set on first call
             static bool first_call = true;
-            //std::cout << result[0].v <<std::endl;
             //Set the first coefficient in the first row to 1, the second in the second and so on.
             if (first_call) {
                 result.setZero();
