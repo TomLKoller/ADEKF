@@ -601,12 +601,20 @@ namespace adekf {
          * @return A dual component vector, to be added to a state
          */
         template<unsigned Size>
-        static Derivator<Size> getDerivator() {
+        static const  Eigen::Matrix<ceres::Jet<double, Size>, Size, 1> & getDerivator() {
             //The resulting dual component vector
-            Derivator<Size> result;
+            static Eigen::Matrix<ceres::Jet<double, Size>, Size, 1> result;
+            //only set on first call
+            static bool first_call = true;
+            //std::cout << result[0].v <<std::endl;
             //Set the first coefficient in the first row to 1, the second in the second and so on.
-            for (unsigned i = 0; i < Size; ++i)
-                result[i] = ceres::Jet<ScalarType, Size>(0, i);
+            if (first_call) {
+                result.setZero();
+                for (unsigned i = 0; i < Size; ++i)
+                    result[i].v[i] = 1;// = ceres::Jet<ScalarType, Size>(0, i);
+                first_call = false;
+                std::cout << "first call " << std::endl;
+            }
             return result;
         }
     };
