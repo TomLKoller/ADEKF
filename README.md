@@ -13,8 +13,9 @@ if you use this implementation in a published work.
 
 # Installation
 ## Dependencies
-1.  Eigen 3 is required for the usage of this library
-1.  Boost is an optional dependency. It is required if you want to use certain helper macros
+1.  Required: Eigen 3 is used for matrix computations 
+1.  Optional: Boost It is required if you want to use certain helper macros
+1.  Optional: CMake  >=3.10 It is used to compile the examples and to install the header files.
 
 ## Installation
 Installation is not required since it is a header only library. You can simply #include the headers.
