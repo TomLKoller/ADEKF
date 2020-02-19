@@ -13,11 +13,32 @@ if you use this implementation in a published work.
 
 # Installation
 ## Dependencies
-1.  Eigen 3 is required for the usage of this library
-1.  Boost is an optional dependency. It is required if you want to use certain helper macros
+1.  Required: GCC >= 7 
+1.  Required: Eigen 3 is used for matrix computations 
+1.  Optional: Boost >= 1.37 It is required if you want to use certain helper macros
+1.  Optional: CMake  >=3.0 It is used to compile the examples and to install the header files.
+
+The ADEKF was originally tested on a ubuntu 18.04.4 LTS with :
+1. GCC 7.4
+1. Eigen 3
+1. Boost 1.65.1
+1. CMake 3.10.2
+
+
 
 ## Installation
 Installation is not required since it is a header only library. You can simply #include the headers.
+
+However, if you want convenient access to the library you can use the provided cmake file to install the headers via:
+```
+mkdir build
+cd build
+cmake ..
+sudo make install 
+```
+
+You can then use the package ADEKF as it is shown in the [example cmake file](examples/velocity_without_orientation_tracking/CMakeLists.txt)
+
 
 ## Prerequisites
 To use this software you should know how to:
