@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.10)
+cmake_minimum_required (VERSION 3.0)
 project("ADEKF" VERSION 1.0.0
                 DESCRIPTION "Automatic Differentiated Extended Kalman Filter (ADEKF) - This is a generic EKF Implementation that uses automatic differentiation to get rid of the need to define Jacobians."
                 LANGUAGES CXX)
@@ -16,7 +16,7 @@ target_include_directories(${PROJECT_NAME} INTERFACE
 target_compile_features(${PROJECT_NAME} INTERFACE cxx_std_17)
 
 find_package(Eigen3 3.3 REQUIRED NO_MODULE)
-find_package(Boost 1.65 REQUIRED)
+find_package(Boost 1.37 REQUIRED)
 
 target_include_directories(${PROJECT_NAME} INTERFACE ${EIGEN3_INCLUDE_DIR})
 target_link_libraries(${PROJECT_NAME} INTERFACE Boost::boost)
