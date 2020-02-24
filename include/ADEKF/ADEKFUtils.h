@@ -140,5 +140,28 @@ namespace adekf {
     auto eval(const Eigen::Block< XprType, BlockRows, BlockCols, InnerPanel > & result){
         return result.eval();
     }
+
+    /**
+     * Creates an index list from ranges
+     * @param ranges a list of integer ranges   (use the minus sign as an until e.g. {1,-3,5,-8} = [1,2,3,5,6,7,8]
+     */
+    std::vector<unsigned int> indexFromRanges(std::initializer_list<int> ranges) {
+        std::vector<unsigned int> indices;
+        int last=-1;
+
+        for(auto index: ranges){
+            if(index >= 0){
+                last=index;
+                indices.push_back(index);
+            }
+            else{
+                for(int i=last+1; i <= abs(index);i++ )
+                    indices.push_back(i);
+            }
+
+        }
+        return indices;
+    }
+
 }
 

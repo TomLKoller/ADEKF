@@ -506,7 +506,8 @@ void testSLAM(bool enableLandmarks, bool log) {
         for(const Meas& m : s.landmarks) {
             unsigned idx = 3 + (2 * (m.id - 1));
             if(seen_landmark[m.id - 1]) {
-                ekf.update(measLand,m.cov,m.pos,idx);
+                //ekf.update(measLand,m.cov,m.pos,idx);
+                ekf.updateSparse(measLand,m.cov,m.pos,adekf::indexFromRanges({0,-2,static_cast<int>(idx),static_cast<int>(idx+1)}),idx);
             } else {
                 ekf.mu.segment<2>(idx) = m.pos;
                 ekf.sigma.block<2,2>(idx, idx) = m.cov;

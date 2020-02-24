@@ -203,6 +203,50 @@ namespace adekf {
         }
 
         /**
+       * Update the State Estimate with automatically differentiated Jacobian Matrices with a sparse measurement model
+       * @tparam Measurement Type of the Measurement
+       * @tparam MeasurementModel Type of the Measurement Model Functor
+       * @tparam Variables Types of Auxiliary Variables for the Measurement Model
+       * @param measurementModel The Measurement Model h(x,variables)
+       * @param R Additive Measurement Noise Covariance
+       * @param z Measurement
+       * @param indices The indices of the state parts which affect the model
+       * @param variables Auxiliary Variables for the Measurement Model
+       */
+        template<typename Measurement, typename MeasurementModel, typename Derived, typename... Variables>
+        void updateSparse(MeasurementModel measurementModel, const MatrixBase<Derived> &R, const MatrixBase<Measurement> &z, const std::vector<unsigned int> & indices,
+                    const Variables &...variables) {
+            //Bind the auxiliary variables to the measurement model
+            auto h = [&measurementModel, &variables...](const auto &state) {
+                return eval(measurementModel(state, variables ...));
+            };
+            //The jacobian matrix to be calculated from the measurement model
+            JacobianOf<Measurement> H(DOFOf<Measurement>, DOF);
+            //The result of the measurement model
+            Measurement hx;
+
+            //constructs the derivator
+            auto derivator = getDerivator<DOF>();
+            for (auto index: indices) {
+                derivator(index) += mu(index);
+            }
+            //The result of the measurement model with a dual component vector added to the state
+            auto input = h(eval(derivator));
+            //Calculate the Jacobian and the result of the measurement model
+            update_impl(hx, input, h, H);
+            //The measurement model has to be differentiable
+            assert(!H.hasNaN() && "Differentiation resulted in an indeterminate form");
+            //Calculate the Innovation covariance
+            auto S = H * sigma * H.transpose() + R;
+            //Calcualte the Kalman Gain
+            auto K = (sigma * H.transpose() * S.inverse()).eval();
+            //Calculate the updated state estimate
+            //Calcualte the updated covariance estimate
+            add_diff(mu, K * (z - hx), K * H);
+        }
+
+
+        /**
          * Update the State Estimate with automatically differentiated Jacobian Matrices and non-Additive Noise
          * @tparam NoiseDim The Dimension of the Noise Vector v
          * @tparam Measurement Type of the Measurement
@@ -600,7 +644,7 @@ namespace adekf {
          * @return A dual component vector, to be added to a state
          */
         template<unsigned Size>
-        static Derivator<Size> getDerivator() {
+        static const  Derivator<Size> & getDerivator() {
             //The resulting dual component vector
             static Derivator<Size> result;
             //only set on first call
