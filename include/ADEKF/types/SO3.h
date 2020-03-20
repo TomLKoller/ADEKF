@@ -32,27 +32,10 @@ public:
 	template<typename Derived, typename OtherScalar = typename Eigen::internal::traits<Derived>::Scalar,
 			typename ResultScalar = decltype(
 					std::declval<Scalar>() * std::declval<OtherScalar>())>
-	Eigen::Matrix<ResultScalar, DOF, 1> operator*(const Eigen::MatrixBase<Derived> &other) const {
-		const Scalar scale = Scalar(1)
-				/ sqrt(this->w() * this->w() + this->x() * this->x() + this->y() * this->y() + this->z() * this->z());
-
-		// Make unit-norm version of q.
-		const Scalar unit[4] = { scale * this->w(), scale * this->x(), scale * this->y(), scale * this->z(), };
-
-		const Scalar t2 = unit[0] * unit[1];
-		const Scalar t3 = unit[0] * unit[2];
-		const Scalar t4 = unit[0] * unit[3];
-		const Scalar t5 = -unit[1] * unit[1];
-		const Scalar t6 = unit[1] * unit[2];
-		const Scalar t7 = unit[1] * unit[3];
-		const Scalar t8 = -unit[2] * unit[2];
-		const Scalar t9 = unit[2] * unit[3];
-		const Scalar t1 = -unit[3] * unit[3];
-
-		return Eigen::Matrix<ResultScalar, 3, 1>(
-				Scalar(2) * ((t8 + t1) * other.x() + (t6 - t4) * other.y() + (t3 + t7) * other.z()) + other.x(),
-				Scalar(2) * ((t4 + t6) * other.x() + (t5 + t1) * other.y() + (t9 - t2) * other.z()) + other.y(),
-				Scalar(2) * ((t7 - t3) * other.x() + (t2 + t9) * other.y() + (t5 + t8) * other.z()) + other.z());
+	EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE Eigen::Matrix<ResultScalar, DOF, 1> operator*(const Eigen::MatrixBase<Derived> &other) const {
+        Eigen::Matrix<ResultScalar,3,1> uv = this->vec().cross(other);
+        uv+=uv;
+        return other + this->w() * uv + this->vec().cross(uv);
 	}
 
 	SO3<Scalar> inverse() const {
