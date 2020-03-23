@@ -3,8 +3,39 @@
 #include<Eigen/Geometry>
 #include "../ceres/rotation.h"
 
+
+
 namespace adekf {
-template<typename Scalar = float>
+    /**
+     * Expression Class for Quaternion Rotation on non primitive scalar types (as ceres::Jet)
+     */
+    template <class QuaternionType, class ArgType,typename ResultScalar = decltype(
+    std::declval<typename QuaternionType::ScalarType >() * std::declval<typename Eigen::internal::traits<ArgType>::Scalar>())>
+    class QuatRotation;
+
+    template <class QuaternionType, class ArgType,typename ResultScalar >
+    class QuatRotation : public Eigen::MatrixBase<QuatRotation<QuaternionType,ArgType,ResultScalar> >
+    {
+
+    public:
+        typedef ResultScalar CoeffReturnType;
+        typedef Eigen::Matrix<ResultScalar,3,1> RESULT_TYPE;
+        QuatRotation(const QuaternionType & quat,const ArgType& arg)
+        {
+            RESULT_TYPE uv = quat.vec().cross(arg);
+            uv+=uv;
+            result= arg + quat.w() * uv + quat.vec().cross(uv);
+        }
+        typedef typename Eigen::internal::ref_selector<QuatRotation>::type Nested;
+        typedef Eigen::Index Index;
+        Index rows() const { return 3; }
+        Index cols() const { return 1; }
+        RESULT_TYPE result;
+    };
+
+
+
+template<typename Scalar>
 class SO3: public Eigen::Quaternion<Scalar> ,public Manifold{
 public:
 	using ScalarType = Scalar;
@@ -32,10 +63,8 @@ public:
 	template<typename Derived, typename OtherScalar = typename Eigen::internal::traits<Derived>::Scalar,
 			typename ResultScalar = decltype(
 					std::declval<Scalar>() * std::declval<OtherScalar>())>
-	EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE Eigen::Matrix<ResultScalar, DOF, 1> operator*(const Eigen::MatrixBase<Derived> &other) const {
-        Eigen::Matrix<ResultScalar,3,1> uv = this->vec().cross(other);
-        uv+=uv;
-        return other + this->w() * uv + this->vec().cross(uv);
+	EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE QuatRotation<adekf::SO3<Scalar>,Eigen::Matrix<OtherScalar,3,1>> operator*(const Eigen::MatrixBase<Derived> &other) const {
+        return QuatRotation<adekf::SO3<Scalar>,Eigen::Matrix<OtherScalar,3,1>>(*this,other);
 	}
 
 	SO3<Scalar> inverse() const {
@@ -79,4 +108,60 @@ public:
 using SO3f = SO3<float>;
 using SO3d = SO3<double>;
 }
+
+
+
+
+
+
+namespace Eigen {
+    namespace internal {
+        /*
+         * Traits class for the quaternion rotation expression
+         */
+        template <class QuaternionType,class ArgType>
+        struct traits<adekf::QuatRotation<QuaternionType,ArgType>>
+        {
+            typedef Eigen::Dense StorageKind;
+            typedef Eigen::MatrixXpr XprKind;
+            typedef typename ArgType::StorageIndex StorageIndex;
+            typedef decltype(std::declval<typename QuaternionType::ScalarType >() * std::declval<typename Eigen::internal::traits<ArgType>::Scalar>()) Scalar;
+            enum {
+                Flags = Eigen::ColMajor,
+                RowsAtCompileTime = 3,
+                ColsAtCompileTime = 1,
+                MaxRowsAtCompileTime = 3,
+                MaxColsAtCompileTime = 1
+            };
+        };
+
+        /**
+         * Evaluator for quaternion rotation. It simply reads the calculated vector
+         */
+        template <class QuaternionType, class ArgType>
+        struct evaluator<adekf::QuatRotation<QuaternionType,ArgType> >
+        : evaluator_base<adekf::QuatRotation<QuaternionType,ArgType> >
+    {
+        typedef adekf::QuatRotation<QuaternionType,ArgType> XprType;
+        typedef typename nested_eval<ArgType, XprType::ColsAtCompileTime>::type ArgTypeNested;
+        typedef typename remove_all<ArgTypeNested>::type ArgTypeNestedCleaned;
+        typedef typename XprType::CoeffReturnType CoeffReturnType;
+        enum {
+            CoeffReadCost = evaluator<ArgTypeNestedCleaned>::CoeffReadCost,
+            Flags = Eigen::ColMajor
+        };
+
+        evaluator(const XprType& xpr)
+                : m_argImpl(xpr.result), m_rows(xpr.rows())
+        { }
+        CoeffReturnType coeff(Index row, Index col) const
+        {
+           return m_argImpl.coeff(row,col);
+        }
+        evaluator<Eigen::Matrix<CoeffReturnType,3,1>> m_argImpl;
+        const Index m_rows;
+    };
+}
+}
+
 
