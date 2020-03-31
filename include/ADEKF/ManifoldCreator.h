@@ -73,7 +73,7 @@ struct defaultValue<Eigen::MatrixBase<DERIVED> >{
 #define ADEKF_COPY_CONSTRUCTOR(name) name(other.name)
 #define ADEKF_ADD_DOF(name) + ADEKF_GETDOF(name)
 #define ADEKF_ASSIGN(name) name=other.name;
-#define ADEKF_STREAM_ASSIGN(name) << name
+#define ADEKF_STREAM_ASSIGN(name)  arg_##name
 
 #define ADEKF_PLUS_OUTPUT(r, state) ADEKF_PLUS_OUTPUT_IMPL state
 #define ADEKF_PLUS_OUTPUT_IMPL(len, head, seq, dof) (head + __delta.template segment<ADEKF_GETDOF(head)>(dof))
@@ -96,7 +96,7 @@ name<T>( \
     ADEKF_TRANSFORM_COMMA(ADEKF_CONSTRUCTOR_ARGS_NO_DEFAULT,m_members) BOOST_PP_COMMA_IF(BOOST_PP_BITAND(ADEKF_SEQ_NOT_EMPTY(m_members),ADEKF_SEQ_NOT_EMPTY(v_members))) ADEKF_TRANSFORM_COMMA(ADEKF_CONSTRUCTOR_ARGS_NO_DEFAULT,v_members) \
     ) : \
     ADEKF_TRANSFORM_COMMA(ADEKF_CONSTRUCTOR_SETTERS,m_members)  BOOST_PP_COMMA_IF(ADEKF_SEQ_NOT_EMPTY(m_members)) vector_part() ADEKF_IF_SEQ_NOT_EMPTY(v_members,ADEKF_RECURSIVE,v_members,ADEKF_MAP_OUTPUT)  {\
-    vector_part ADEKF_TRANSFORM(ADEKF_STREAM_ASSIGN,v_members);\
+    vector_part << ADEKF_TRANSFORM_COMMA(ADEKF_STREAM_ASSIGN,v_members);\
 }\
 name<T>(const name<T> & other):ADEKF_TRANSFORM_COMMA(ADEKF_COPY_CONSTRUCTOR,m_members)BOOST_PP_COMMA_IF(ADEKF_SEQ_NOT_EMPTY(m_members)) vector_part(other.vector_part) ADEKF_IF_SEQ_NOT_EMPTY(v_members,ADEKF_RECURSIVE,v_members,ADEKF_MAP_OUTPUT){}
 
@@ -120,12 +120,17 @@ name<T>( \
 void operator=(const name<T> & other){\
   ADEKF_TRANSFORM(ADEKF_ASSIGN,m_members)\
   vector_part=other.vector_part;\
+}\
+void operator=(const name<T> && other){\
+  ADEKF_TRANSFORM(ADEKF_ASSIGN,m_members)\
+  vector_part=other.vector_part;\
 }
 
 #define ADEKF_BOXPLUS(name, m_members, v_members) \
-template<typename T2> \
-name<ADEKF_PLUSRESULT(T,T2)> operator+(const Eigen::Matrix<T2, DOF, 1>& __delta) const { \
-     return name<ADEKF_PLUSRESULT(T,T2)>{ADEKF_IF_SEQ_NOT_EMPTY(m_members,ADEKF_RECURSIVE,m_members,ADEKF_PLUS_OUTPUT) BOOST_PP_COMMA_IF(ADEKF_SEQ_NOT_EMPTY(m_members)) vector_part+__delta.template segment<VEC_DOF>(MAN_DOF)}; \
+template<typename Derived> \
+name<ADEKF_PLUSRESULT(T,typename Derived::Scalar)> operator+(const Eigen::MatrixBase<Derived>& __delta) const { \
+EIGEN_STATIC_ASSERT_VECTOR_SPECIFIC_SIZE(Derived, DOF)\
+     return name<ADEKF_PLUSRESULT(T,typename Derived::Scalar)>{ADEKF_IF_SEQ_NOT_EMPTY(m_members,ADEKF_RECURSIVE,m_members,ADEKF_PLUS_OUTPUT) BOOST_PP_COMMA_IF(ADEKF_SEQ_NOT_EMPTY(m_members)) vector_part+__delta.template tail<VEC_DOF>()}; \
 }
 
 

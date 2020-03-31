@@ -9,6 +9,8 @@
 
 
 namespace adekf {
+
+
     using namespace Eigen;
     using namespace std::placeholders;
 
@@ -113,7 +115,7 @@ namespace adekf {
             //Calculate the new Covariance
             sigma = F * sigma * F.transpose() + Q;
         }
-
+        
         /**
          * Predict the State Estimate with automatically differentiated Jacobian Matrices and non additive Noise
          * @tparam NoiseDim The Dimension of the Noise Vector w
@@ -611,7 +613,6 @@ namespace adekf {
                 for (unsigned i = 0; i < Size; ++i)
                     result[i].v[i] = 1;// = ceres::Jet<ScalarType, Size>(0, i);
                 first_call = false;
-                std::cout << "first call " << std::endl;
             }
             return result;
         }

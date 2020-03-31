@@ -2,7 +2,7 @@
 
 #include<Eigen/Geometry>
 #include "../ceres/rotation.h"
-
+#include "../ADEKFUtils.h"
 
 
 namespace adekf {
@@ -36,7 +36,7 @@ namespace adekf {
 
 
 template<typename Scalar>
-class SO3: public Eigen::Quaternion<Scalar> ,public Manifold{
+class SO3: public Manifold, public Eigen::Quaternion<Scalar> {
 public:
 	using ScalarType = Scalar;
 	static constexpr unsigned DOF = 3;
@@ -69,6 +69,9 @@ public:
 
 	SO3<Scalar> inverse() const {
 		return SO3<Scalar>(Eigen::Quaternion<Scalar>::inverse());
+	}
+	SO3<Scalar> conjugate() const{
+	    return SO3<Scalar>(Eigen::Quaternion<Scalar>::conjugate());
 	}
 
 	template<typename Derived, typename OtherScalar = typename Derived::Scalar>
@@ -148,13 +151,13 @@ namespace Eigen {
         typedef typename XprType::CoeffReturnType CoeffReturnType;
         enum {
             CoeffReadCost = evaluator<ArgTypeNestedCleaned>::CoeffReadCost,
-            Flags = Eigen::ColMajor
+            Flags = Eigen::ColMajor | Eigen::LinearAccessBit
         };
 
         evaluator(const XprType& xpr)
                 : m_argImpl(xpr.result), m_rows(xpr.rows())
         { }
-        CoeffReturnType coeff(Index row, Index col) const
+        CoeffReturnType coeff(Index row, Index col=0) const
         {
            return m_argImpl.coeff(row,col);
         }
