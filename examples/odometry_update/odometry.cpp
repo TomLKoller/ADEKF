@@ -39,14 +39,14 @@ int main(int argc, char * argv[]) {
     auto dynamic_model = [&gravity](auto &state, auto noise, auto acc, auto omega, double deltaT) {
         state.orientation=state.orientation+(omega+NOISE(0,3))*deltaT;
         auto world_acc=state.orientation*(acc+NOISE(3,3))-gravity;
-        state.position += state.velocity * deltaT +0.5* world_acc * deltaT*deltaT;
-        state.velocity += world_acc * deltaT;
+        state.position += state.orientation*state.velocity * deltaT +0.5* world_acc * deltaT*deltaT;
+        state.velocity +=state.orientation.conjugate()*world_acc * deltaT-omega.cross(state.velocity)*deltaT;
     };
     auto dynamic_model_old = [dynamic_model](auto &state, auto noise, auto acc, auto omega, double deltaT) {
         state.old_position = state.position;
         dynamic_model(state,noise, acc, omega, deltaT);
     };
-    auto measurement_model = [](auto state) { return state.orientation.conjugate()*state.velocity; };
+    auto measurement_model = [](auto state) { return state.velocity; };
     auto measurement_model_old = [](auto state) { return state.orientation.conjugate()*(state.position - state.old_position); };
     Eigen::Matrix<double, 6, 6> cov=cov.Identity() *0.1;
     Eigen::Vector3d random_acc,random_omega,random_vel;
@@ -63,7 +63,7 @@ int main(int argc, char * argv[]) {
                              ekf.predictWithNonAdditiveNoise(dynamic_model, cov, acc + random_acc, omega+random_omega, deltaT);
                              ekf_old.predictWithNonAdditiveNoise(dynamic_model_old, cov, acc + random_acc, omega+random_omega, deltaT);
                              random_vel= random_vel.Random() * 0.1;
-                             ekf.update(measurement_model, Eigen::Matrix3d::Identity() * 0.1, (ekf_true.mu.orientation.conjugate()*ekf_true.mu.velocity+random_vel).eval());
+                             ekf.update(measurement_model, Eigen::Matrix3d::Identity() * 0.1, (ekf_true.mu.velocity+random_vel).eval());
                              ekf_old.update(measurement_model_old, Eigen::Matrix3d::Identity() * 0.1*deltaT*deltaT, (ekf_true.mu.orientation.conjugate()*(ekf_true.mu.position-old_position)+random_vel*deltaT).eval());
                          }
                      }
