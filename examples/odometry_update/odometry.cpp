@@ -22,7 +22,6 @@ int main(int argc, char * argv[]) {
     Eigen::Vector3d pos{20,0,0};
     Eigen::Vector3d gravity{0,0,0};
 
-    adekf::viz::LinePlot::plotVector(gravity, "Gravity");
     adekf::SO3d orient;
     adekf::StateInfo<adekf::SO3d> test;
     adekf::ADEKF ekf(Position(orient,pos, vel), Eigen::Matrix<double, 9, 9>::Identity());
@@ -51,11 +50,14 @@ int main(int argc, char * argv[]) {
     auto measurement_model_old = [](auto state) { return state.orientation.conjugate()*(state.position - state.old_position); };
     Eigen::Matrix<double, 6, 6> cov=cov.Identity() *0.1;
     Eigen::Vector3d random_acc,random_omega,random_vel;
+    //adekf::viz::LinePlot::plotVector(ekf_true.mu.position, "acc",1000,"xyz");
+
     std::thread loop([&]() {
                          while (!adekf::viz::PoseRenderer::isDone()) {
                              random_acc= random_acc.Random()*0.1;
                              random_omega=random_omega.Random()*0.001;
                              acc=omega.cross(base_vel)+ekf_true.mu.orientation.conjugate()*gravity;
+                             adekf::viz::LinePlot::plotVector(ekf_true.mu.position, "acc",1000,"xyz");
                              Eigen::Vector3d old_position=ekf_true.mu.position;
                              ekf_true.predictWithNonAdditiveNoise(dynamic_model, cov, acc,omega, deltaT);
                              ekf.predictWithNonAdditiveNoise(dynamic_model, cov, acc + random_acc, omega+random_omega, deltaT);

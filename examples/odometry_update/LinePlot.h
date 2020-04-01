@@ -10,55 +10,76 @@
 #include <map>
 #include "jkqtplotter/jkqtplotter.h"
 #include "jkqtplotter/graphs/jkqtpscatter.h"
+#include <functional>
+#include <ADEKF/ADEKFUtils.h>
+
+#include <boost/asio/io_service.hpp>
 namespace adekf::viz {
-    class LinePlot {
+
+class VectorRingBuffer{
+        std::vector<double *> buffer;
+        size_t buffer_size,current,current_size;
     public:
-
-        template<class VectorType>
-        static void plotVector(Eigen::MatrixBase<VectorType> vector, const char *title) {
-            // 1. create a plotter window and get a pointer to the internal datastore (for convenience)
-            JKQTPlotter *plot= new JKQTPlotter();
-            JKQTPDatastore* ds=plot->getDatastore();
-
-            // 2. now we create data for a simple plot (a sine curve)
-            QVector<double> X, Y;
-            const int Ndata=100;
-            for (int i=0; i<Ndata; i++) {
-                const double x=double(i)/double(Ndata)*8.0*JKQTPSTATISTICS_PI;
-                X<<x;
-                Y<<sin(x);
+        VectorRingBuffer(size_t buffer_size,const Eigen::VectorXd & first_vector):buffer_size(buffer_size),current(0),current_size(0){
+            for(size_t i=0; i < first_vector.rows(); i++) {
+                buffer.push_back((double *)calloc(buffer_size, sizeof(double)));
+                std::fill_n(buffer.back(),buffer_size,0);
             }
-
-            // 3. make data available to JKQTPlotter by adding it to the internal datastore.
-            //    Note: In this step the data is copied (of not specified otherwise), so you can
-            //          reuse X and Y afterwards!
-            //    the variables columnX and columnY will contain the internal column ID of the newly
-            //    created columns with names "x" and "y" and the (copied) data from X and Y.
-            size_t columnX=ds->addCopiedColumn(X, "x");
-            size_t columnY=ds->addCopiedColumn(Y, "y");
-
-            // 4. create a graph in the plot, which plots the dataset X/Y:
-            JKQTPXYLineGraph* graph1=new JKQTPXYLineGraph(plot);
-            graph1->setXColumn(columnX);
-            graph1->setYColumn(columnY);
-            graph1->setTitle(QObject::tr("sine graph"));
-
-            // 5. add the graph to the plot, so it is actually displayed
-            plot->addGraph(graph1);
-
-            // 6. autoscale the plot so the graph is contained
-            plot->zoomToFit();
-
-            // show plotter and make it a decent size
-            plot->show();
-            plot->resize(600,400);
+            append(first_vector);
+        }
+        void append(const Eigen::VectorXd &vector){
+            for(size_t i=0; i < vector.rows(); i++) {
+                buffer[i][current] = vector(i);
+            }
+            if(current_size < buffer_size)
+                current_size++;
+            current++;
+            if(current > current_size)
+                current=current % current_size;
+        }
+        double operator()(size_t element,size_t index){
+            return buffer[index][(element-current+buffer_size)%buffer_size];
         }
 
-        static void updatePlots() {
+        double * getBuffer(size_t index){
+            return buffer[index];
         }
 
-        static void disposePlots() {
+        size_t getBufferSize(){
+            return buffer_size;
         }
+        size_t getCurrentSize(){
+            return current_size;
+        }
+    };
+class BufferReader{
+    VectorRingBuffer & buffer;
+    size_t index;
+public:
+    BufferReader(VectorRingBuffer & buffer, size_t index) :buffer(buffer),index(index){
+    }
+    double operator()(size_t element){
+            return buffer(element,index);
+    }
+
+};
+
+
+    class LinePlot :public JKQTPlotter {
+        Q_OBJECT
+    static inline std::map<const char*, VectorRingBuffer > plot_data;
+    static inline std::vector<std::shared_ptr<JKQTPlotter> > plots;
+    static inline std::shared_ptr<LinePlot> class_object;
+    static void createPlot(size_t size,const char *title, size_t buffer_size, const char * legend);
+    public:
+        static inline boost::asio::io_service ioService;
+        static void initPlots();
+        static void plotVector(const Eigen::VectorXd & vector, const char *title, size_t buffer_size, const char * legend) ;
+        static void disposePlots();
+        static void startUpdateThread();
+
+    public slots:
+        void updatePlots();
     };
 }
 
