@@ -465,7 +465,7 @@ namespace adekf {
             modelResult = h(mu);
             //calculate the Jacobian
             auto result = input - modelResult;
-            for (int i = 0; i < DOF; ++i) {
+            for (int i = 0; i < DOFOf<Measurement>; ++i) {
                 H.row(i) = result(i).v;
             }
 

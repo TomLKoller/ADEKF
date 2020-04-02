@@ -7,7 +7,7 @@
 namespace adekf::viz {
 
     void LinePlot::initPlots() {
-        class_object = std::make_shared<LinePlot>();
+        class_object = std::shared_ptr<LinePlot>(new LinePlot());
     }
 
     void LinePlot::updatePlots() {

@@ -19,7 +19,7 @@ int main(int argc, char * argv[]) {
     //Simple Example with no orientation
     adekf::viz::initGuis(argc,argv);
     Eigen::Vector3d acc{1, 0, 0};
-    Eigen::Vector3d omega{0,0,0.1};
+    Eigen::Vector3d omega{0,0.,0.1};
     Eigen::Vector3d base_vel{1, 0, 0};
     Eigen::Vector3d vel{base_vel};
     Eigen::Vector3d pos{20,0,0};
@@ -47,7 +47,7 @@ int main(int argc, char * argv[]) {
         state.orientation=state.orientation+(omega+NOISE(0,3))*deltaT;
         auto world_acc=state.orientation*(acc+NOISE(3,3))-gravity;
         state.position += state.orientation*state.velocity * deltaT +0.5* world_acc * deltaT*deltaT;
-        state.velocity +=state.orientation.conjugate()*world_acc * deltaT-omega.cross(state.velocity)*deltaT;
+        state.velocity +=state.orientation.conjugate()*world_acc * deltaT+omega.cross(state.velocity)*deltaT;
     };
     auto dynamic_model_world = [&gravity](auto &state, auto noise, auto acc, auto omega, double deltaT) {
         state.orientation=state.orientation+(omega+NOISE(0,3))*deltaT;
@@ -60,23 +60,26 @@ int main(int argc, char * argv[]) {
         auto noiseRotation=adekf::SO3((omega+NOISE(0,3))*deltaT);
         state.orientation=state.orientation*noiseRotation;
         state.gravity=noiseRotation.conjugate()*state.gravity;
-        auto world_acc=state.orientation*(acc+NOISE(3,3)-state.gravity*GRAVITY_CONSTANT);
-        state.position += state.orientation*state.velocity * deltaT +0.5* world_acc * deltaT*deltaT;
-        state.velocity +=state.orientation.conjugate()*world_acc * deltaT-omega.cross(state.velocity)*deltaT;
+        auto body_acc= acc + NOISE(3, 3) - state.gravity * GRAVITY_CONSTANT;
+        state.position += state.orientation*(state.velocity * deltaT + 0.5 * body_acc * deltaT * deltaT);
+        state.velocity +=  (body_acc  + omega.cross(state.velocity) )* deltaT;
     };
     auto measurement_model_body = [](auto state) { return state.velocity; };
     auto measurement_model_world = [](auto state) { return state.orientation.conjugate() * (state.velocity); };
-    Eigen::Matrix<double, 6, 6> cov=cov.Identity() *0.1;
+
+    auto consistency_model =[&gravity](auto state){return adekf::DirectionVector(state.orientation.conjugate()*gravity);};
+    Eigen::Matrix<double, 6, 6> cov=cov.Identity() *1.;
     Eigen::Vector3d random_acc,random_omega,random_vel;
+    Eigen::Vector2d consistency_target=Eigen::Vector2d::Zero();
     //adekf::viz::LinePlot::plotVector(ekf_true.mu.position, "acc",1000,"xyz");
     //LOG_STREAM << ekf_gravity.sigma  <<std::endl LOG_END
     std::thread loop([&]() {
                          while (!adekf::viz::PoseRenderer::isDone()) {
                              random_acc= random_acc.Random()*0.1;
                              random_omega=random_omega.Random()*0.001;
-                             //random_acc=random_omega=random_omega.Zero();
-                             acc=omega.cross(base_vel)+ekf_true.mu.orientation.conjugate()*gravity;
-                             //adekf::viz::LinePlot::plotVector(ekf_true.mu.position, "True position",3000,"xyz");
+                             random_acc=random_omega=random_omega.Zero();
+                             acc=-omega.cross(base_vel)+(ekf_true.mu.orientation+omega*deltaT).conjugate()*gravity;
+                             //adekf::viz::LinePlot::plotVector(ekf_true.mu.position, "True position",1000,"xyz");
                              //adekf::viz::LinePlot::plotVector(ekf_world.mu.position, "Position World EKF",3000,"xyz");
                              //adekf::viz::LinePlot::plotVector(ekf_body.mu.position, "Body World EKF",3000,"xyz");
                              Eigen::Vector3d old_position=ekf_true.mu.position;
@@ -84,12 +87,13 @@ int main(int argc, char * argv[]) {
                              ekf_body.predictWithNonAdditiveNoise(dynamic_model_body, cov, acc + random_acc, omega + random_omega, deltaT);
                              ekf_world.predictWithNonAdditiveNoise(dynamic_model_world, cov, acc + random_acc, omega + random_omega, deltaT);
                              ekf_gravity.predictWithNonAdditiveNoise(dynamic_model_gravity, cov, acc + random_acc, omega + random_omega, deltaT);
-                             LOG_STREAM << ekf_gravity.mu.gravity LOG_END
-                             random_vel= random_vel.Random() * 0.1;
+                             //LOG_STREAM << ekf_gravity.mu.gravity LOG_END
+                             random_vel= random_vel.Random() * 0.1*0;
                              ekf_body.update(measurement_model_body, Eigen::Matrix3d::Identity() * 0.1, (ekf_true.mu.velocity + random_vel).eval());
                              ekf_world.update(measurement_model_world, Eigen::Matrix3d::Identity() * 0.1 , (ekf_true.mu.velocity + random_vel).eval());
                              ekf_gravity.update(measurement_model_body, Eigen::Matrix3d::Identity() * 0.1, (ekf_true.mu.velocity + random_vel).eval());
-
+                             ekf_gravity.update(consistency_model,Eigen::Matrix2d::Identity()*0.1,ekf_gravity.mu.gravity);
+                             adekf::viz::LinePlot::plotVector(ekf_gravity.sigma.diagonal().segment<3>(0),"Covariance of Orientation GRavity Filter",2000,"xyz");
                          }
                      }
     );

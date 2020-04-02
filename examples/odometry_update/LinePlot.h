@@ -71,6 +71,9 @@ public:
     static inline std::vector<std::shared_ptr<JKQTPlotter> > plots;
     static inline std::shared_ptr<LinePlot> class_object;
     static void createPlot(size_t size,const char *title, size_t buffer_size, const char * legend);
+    LinePlot(){
+
+    }
     public:
         static inline boost::asio::io_service ioService;
         static void initPlots();
