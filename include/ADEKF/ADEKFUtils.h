@@ -182,5 +182,36 @@ namespace adekf {
 #endif
 #define LOG_END << std::endl;
 
+
+/**
+ * Determines whether all matrix elements are not inf or nan
+ * @param matrix The matrix to check
+ * @return	whether all values are finite
+ */
+    template<typename Derived>
+    bool isfinite(const Eigen::MatrixBase<Derived> & matrix) {
+        return matrix.allFinite();
+    }
+/**
+ * does nothing just for variadic resolve of assert_inputs(T first,ARGS)
+ */
+    void inline assert_finite() {
+
+    }
+/**
+ * asserts whether all input numbers have finite values
+ *
+ * Uses variadic Evaluation to check an undefined amount of variables
+ * @param first  the argument which is evaluated at this call
+ * @param args   arguments for next calls
+ */
+
+    template<typename T, typename ... Args>
+    void assert_finite(T first, Args ... args) {
+        assert(isfinite(first));
+        assert_finite(args ...);
+    }
+
+
 }
 

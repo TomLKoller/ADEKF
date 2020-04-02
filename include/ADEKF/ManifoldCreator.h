@@ -47,6 +47,8 @@ BOOST_PP_FOR_1( \
 #define ADEKF_CONSTRUCTOR_ARGS_NO_DEFAULT(name)  const typename adekf::StateInfo<decltype(name)>::type & arg_##name
 
 
+#define ADEKF_RECURSIVE_COMMA(seq,output_function) BOOST_PP_SEQ_ENUM(ADEKF_RECURSIVE(seq,output_function))
+
 /**
  * Struct to get default values differently for manifolds
  */
@@ -79,7 +81,7 @@ struct defaultValue<Eigen::MatrixBase<DERIVED> >{
 #define ADEKF_PLUS_OUTPUT_IMPL(len, head, seq, dof) (head + __delta.template segment<ADEKF_GETDOF(head)>(dof))
 
 #define ADEKF_MINUS_OUTPUT(r, state) ADEKF_MINUS_OUTPUT_IMPL state
-#define ADEKF_MINUS_OUTPUT_IMPL(len, head, seq, dof) << head - __other.head
+#define ADEKF_MINUS_OUTPUT_IMPL(len, head, seq, dof)  (head - __other.head)
 
 
 #define ADEKF_OUTSTREAM_IMPL(name) << __state.name << std::endl
@@ -130,14 +132,14 @@ void operator=(const name<T> && other){\
 template<typename Derived> \
 name<ADEKF_PLUSRESULT(T,typename Derived::Scalar)> operator+(const Eigen::MatrixBase<Derived>& __delta) const { \
 EIGEN_STATIC_ASSERT_VECTOR_SPECIFIC_SIZE(Derived, DOF)\
-     return name<ADEKF_PLUSRESULT(T,typename Derived::Scalar)>{ADEKF_IF_SEQ_NOT_EMPTY(m_members,ADEKF_RECURSIVE,m_members,ADEKF_PLUS_OUTPUT) BOOST_PP_COMMA_IF(ADEKF_SEQ_NOT_EMPTY(m_members)) vector_part+__delta.template tail<VEC_DOF>()}; \
+     return name<ADEKF_PLUSRESULT(T,typename Derived::Scalar)>{ADEKF_IF_SEQ_NOT_EMPTY(m_members,ADEKF_RECURSIVE_COMMA,m_members,ADEKF_PLUS_OUTPUT) BOOST_PP_COMMA_IF(ADEKF_SEQ_NOT_EMPTY(m_members)) vector_part+__delta.template tail<VEC_DOF>()}; \
 }
 
 
 #define ADEKF_BOXMINUS(name, m_members,v_members) \
 template<typename T2> \
 Eigen::Matrix<ADEKF_MINUSRESULT(T,T2),DOF,1> operator-(const name<T2>& __other) const { \
-    Eigen::Matrix<ADEKF_MINUSRESULT(T,T2),DOF,1> __result; __result ADEKF_IF_SEQ_NOT_EMPTY(m_members,ADEKF_RECURSIVE,m_members,ADEKF_MINUS_OUTPUT) << vector_part-__other.vector_part;return __result;\
+    Eigen::Matrix<ADEKF_MINUSRESULT(T,T2),DOF,1> __result; __result << ADEKF_IF_SEQ_NOT_EMPTY(m_members,ADEKF_RECURSIVE_COMMA,m_members,ADEKF_MINUS_OUTPUT) BOOST_PP_COMMA_IF(ADEKF_SEQ_NOT_EMPTY(m_members)) vector_part-__other.vector_part;return __result;\
 }
 
 #define CALL_FUNCTION_ON_MEMBER(r,data,name)  BOOST_PP_TUPLE_ELEM(0,data) (name,BOOST_PP_TUPLE_ELEM(1,data)...);

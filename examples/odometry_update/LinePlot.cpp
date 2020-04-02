@@ -31,6 +31,7 @@ namespace adekf::viz {
             graph1->setXColumn(columnT);
             graph1->setYColumn(columnV);
             graph1->setTitle(QString(legend[i]));
+            graph1->setSymbolType(JKQTPNoSymbol);
             // 5. add the graph to the plot, so it is actually displayed
             plot->addGraph(graph1);
         }

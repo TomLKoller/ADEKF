@@ -52,6 +52,15 @@ public:
 	SO3(const Eigen::Matrix<Scalar, DOF, DOF> &rotationMatrix) :
 			Eigen::Quaternion<Scalar>(rotationMatrix) {};
 
+	template<typename Derived>
+	SO3(const Eigen::MatrixBase<Derived> & omega){
+        Scalar expData[4];
+        Eigen::Ref<const Eigen::Matrix<Scalar, DOF, 1>> buffer = omega;
+        ceres::AngleAxisToQuaternion(buffer.data(), expData);
+        *this=SO3<Scalar>(expData[0], expData[1], expData[2], expData[3]);
+	}
+
+
 	template<typename OtherScalar>
 	auto operator*(const SO3<OtherScalar> &other) const {
 		return adekf::SO3(this->w() * other.w() - this->x() * other.x() - this->y() * other.y() - this->z() * other.z(),
@@ -74,15 +83,14 @@ public:
 	    return SO3<Scalar>(Eigen::Quaternion<Scalar>::conjugate());
 	}
 
+
 	template<typename Derived, typename OtherScalar = typename Derived::Scalar>
 	auto operator+(const Eigen::MatrixBase<Derived> &delta) const {
-		OtherScalar expData[4];
-		Eigen::Ref<const Eigen::Matrix<OtherScalar, DOF, 1>> buffer = delta;
-
-		ceres::AngleAxisToQuaternion(buffer.data(), expData);
-
-		SO3<OtherScalar> exp(expData[0], expData[1], expData[2], expData[3]);
-		return *this *exp;
+        OtherScalar expData[4];
+        Eigen::Ref<const Eigen::Matrix<OtherScalar, DOF, 1>> buffer = delta;
+        ceres::AngleAxisToQuaternion(buffer.data(), expData);
+        SO3<OtherScalar> exp(expData[0], expData[1], expData[2], expData[3]);
+		return *this * exp;
 	}
 
 	template<typename OtherScalar>
@@ -96,7 +104,11 @@ public:
 		return result;
 	}
 
-	friend std::ostream &operator<<(std::ostream &stream, const SO3<Scalar> &state) {
+
+
+
+
+    friend std::ostream &operator<<(std::ostream &stream, const SO3<Scalar> &state) {
 		return stream << state.coeffs().transpose() << " ";
 	}
 
@@ -107,6 +119,9 @@ public:
 		return is;
 	}
 };
+
+template<typename Derived>
+SO3(const Eigen::MatrixBase<Derived> & ) -> SO3<typename Derived::Scalar>;
 
 using SO3f = SO3<float>;
 using SO3d = SO3<double>;
