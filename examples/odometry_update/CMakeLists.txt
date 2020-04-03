@@ -34,7 +34,7 @@ endif()
 message (STATUS "VTK_VERSION: ${VTK_VERSION}")
 
 # include all components
-add_executable(CylinderExample MACOSX_BUNDLE odometry.cpp LinePlot.cpp)
+add_executable(CylinderExample MACOSX_BUNDLE odometry.cpp LinePlot.cpp Heatmap.cpp)
 target_include_directories(CylinderExample PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(CylinderExample PUBLIC ${VTK_LIBRARIES} ${Boost_LIBRARIES}  ADEKF::ADEKF ${CMAKE_THREAD_LIBS_INIT}  Qt5::Core Qt5::Widgets Qt5::Gui Qt5::PrintSupport Qt5::Svg Qt5::Xml JKQTPlotterSharedLib )
 # vtk_module_autoinit is needed
