@@ -49,8 +49,9 @@ public:
 	SO3(const Eigen::Quaternion<Scalar> &src = Eigen::Quaternion<Scalar>::Identity()) :
 			Eigen::Quaternion<Scalar>(src) {};
 
-	SO3(const Eigen::Matrix<Scalar, DOF, DOF> &rotationMatrix) :
-			Eigen::Quaternion<Scalar>(rotationMatrix) {};
+
+    SO3(const Eigen::Matrix<Scalar, DOF, DOF>  &rotationMatrix) :
+            Eigen::Quaternion<Scalar>(rotationMatrix) {};
 
 	template<typename Derived>
 	SO3(const Eigen::MatrixBase<Derived> & omega){
@@ -61,7 +62,10 @@ public:
 	}
 
 
-	template<typename OtherScalar>
+
+
+
+    template<typename OtherScalar>
 	auto operator*(const SO3<OtherScalar> &other) const {
 		return adekf::SO3(this->w() * other.w() - this->x() * other.x() - this->y() * other.y() - this->z() * other.z(),
 				this->w() * other.x() + this->x() * other.w() + this->y() * other.z() - this->z() * other.y(),
@@ -86,16 +90,12 @@ public:
 
 	template<typename Derived, typename OtherScalar = typename Derived::Scalar>
 	auto operator+(const Eigen::MatrixBase<Derived> &delta) const {
-        OtherScalar expData[4];
-        Eigen::Ref<const Eigen::Matrix<OtherScalar, DOF, 1>> buffer = delta;
-        ceres::AngleAxisToQuaternion(buffer.data(), expData);
-        SO3<OtherScalar> exp(expData[0], expData[1], expData[2], expData[3]);
-		return *this * exp;
+        return SO3<OtherScalar>(delta)* *this;
 	}
 
 	template<typename OtherScalar>
 	auto operator-(const SO3<OtherScalar> &other) const {
-		adekf::SO3 delta(other.inverse() * *this);
+		adekf::SO3 delta(*this *other.conjugate());
 		using ResultScalar=typename decltype(delta)::ScalarType;
 		Eigen::Matrix<ResultScalar, DOF, 1> result;
 		ResultScalar deltaData[4] = { delta.coeffs().data()[3], delta.coeffs().data()[0], delta.coeffs().data()[1],

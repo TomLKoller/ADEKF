@@ -39,6 +39,21 @@ namespace adekf::viz{
         finishGuis();
     }
 
+    void plotVector(const Eigen::VectorXd & vector, const char *title, size_t buffer_size, const char * legend){
+        LinePlot::plotVector(vector,title,buffer_size,legend);
+    }
+    template<class EstimatorType>
+    static void displayCovariance(EstimatorType *  estimator, const char *  title, double  min=-2., double  max=10.){
+        HeatMap::displayCovariance(estimator,title,min,max);
+    }
+    template<class EstimatorType>
+    static void displayPosition(EstimatorType * estimator, const char * color){
+        PoseRenderer::displayPosition(estimator,color);
+    }
+    template<class EstimatorType>
+    static void displayPose(EstimatorType * estimator, const char * color){
+        PoseRenderer::displayPose(estimator,color);
+    }
 
 
 }

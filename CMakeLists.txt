@@ -3,6 +3,8 @@ project("ADEKF" VERSION 1.0.0
                 DESCRIPTION "Automatic Differentiated Extended Kalman Filter (ADEKF) - This is a generic EKF Implementation that uses automatic differentiation to get rid of the need to define Jacobians."
                 LANGUAGES CXX)
 
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -march=native")
+
 include(GNUInstallDirs)
 
 add_library(${PROJECT_NAME} INTERFACE)
@@ -54,5 +56,6 @@ if (${PROJECT_NAME}_BUILD_TESTS)
     #add_subdirectory(examples/velocity_without_orientation_tracking examples/velocity_without_orientation_tracking/build)
     #add_subdirectory(examples/testingField examples/testingField/build)
     add_subdirectory(examples/odometry_update examples/odometry_update/build)
+
 endif ()
 

@@ -115,6 +115,8 @@ namespace adekf {
             //Calculate the new Covariance
             sigma = F * sigma * F.transpose() + Q;
         }
+
+
         
         /**
          * Predict the State Estimate with automatically differentiated Jacobian Matrices and non additive Noise
@@ -143,6 +145,40 @@ namespace adekf {
             predict_impl(input, std::bind(f, _1, MatrixType<NoiseDim, 1>::Zero()), input, F);
             //The dynamic model has to be differentiable
             assert(!F.hasNaN() && "Differentiation resulted in an indeterminate form");
+            //Calculate the new Covariance
+            sigma = F.template leftCols<DOF>() * sigma * F.template leftCols<DOF>().transpose() +
+                    F.template rightCols<NoiseDim>() * Q * F.template rightCols<NoiseDim>().transpose();
+        }
+
+        /**
+        * Predict the State Estimate with automatically differentiated Jacobian Matrices and non additive Noise
+        * @tparam NoiseDim The Dimension of the Noise Vector w
+        * @tparam DynamicModel Type of the Dynamic Model Functor
+        * @tparam Controls Types of the Control Vectors
+        * @param dynamicModel The Dynamic Model f(x,w,u)
+        * @param Q non-Additive Process Noise Covariance
+        * @param u Control Vectors
+        */
+        template<int NoiseDim, typename DynamicModel,typename Nullspace, typename... Controls>
+        void predictWithNonAdditiveNoiseAndNullSpaceConstraint(DynamicModel dynamicModel, const SquareMatrixType<NoiseDim> &Q, const MatrixBase<Nullspace> & N,
+                                         const Controls &...u) {
+            //The Jacobian to be calculated from the dynamic Model
+            MatrixType<DOF, DOF + NoiseDim> F(DOF, DOF + NoiseDim);
+            //Bind the control vectors to the dynamic Model
+            auto f = std::bind(dynamicModel, _1, _2, u...);
+            //Generate a Vector of dual components for the state and noise vector
+            auto derivator = getDerivator<DOF + NoiseDim>();
+            //Add the first DOF cells of the dual component vector to the State
+            auto input = eval(mu + derivator.template head<DOF>());
+            //Evaluate the dynamic model with the NoiseDim last cells of the dual component vector
+            f(input, derivator.template tail<NoiseDim>());
+            //Calculate the Jacobian Matrix and set the new State Estimate
+            //The noise vector gets set to zero for this
+            predict_impl(input, std::bind(f, _1, MatrixType<NoiseDim, 1>::Zero()), input, F);
+            //The dynamic model has to be differentiable
+            assert(!F.hasNaN() && "Differentiation resulted in an indeterminate form");
+            //Apply null space constrain
+            F.template leftCols<DOF>()=F.template leftCols<DOF>()-(F.template leftCols<DOF>()*N-N)*(N.transpose()*N).inverse()*N.transpose();
             //Calculate the new Covariance
             sigma = F.template leftCols<DOF>() * sigma * F.template leftCols<DOF>().transpose() +
                     F.template rightCols<NoiseDim>() * Q * F.template rightCols<NoiseDim>().transpose();
@@ -203,6 +239,46 @@ namespace adekf {
             //Calcualte the updated covariance estimate
             add_diff(mu, K * (z - hx), K * H);
         }
+
+        /**
+         * Update the State Estimate with automatically differentiated Jacobian Matrices
+         * @tparam Measurement Type of the Measurement
+         * @tparam MeasurementModel Type of the Measurement Model Functor
+         * @tparam Variables Types of Auxiliary Variables for the Measurement Model
+         * @param measurementModel The Measurement Model h(x,variables)
+         * @param R Additive Measurement Noise Covariance
+         * @param z Measurement
+         * @param variables Auxiliary Variables for the Measurement Model
+         */
+        template<typename Measurement, typename MeasurementModel, typename Derived, typename NullSpace, typename... Variables>
+        void updateWithNullSpaceConstraint(MeasurementModel measurementModel, const MatrixBase<Derived> &R, const Measurement &z, const MatrixBase<NullSpace> & N,
+                    const Variables &...variables) {
+            //Bind the auxiliary variables to the measurement model
+            auto h = [&measurementModel, &variables...](const auto &state) {
+                return eval(measurementModel(state, variables ...));
+            };
+            //The jacobian matrix to be calculated from the measurement model
+            JacobianOf<Measurement> H(DOFOf<Measurement>, DOF);
+            //The result of the measurement model
+            Measurement hx;
+            //The result of the measurement model with a dual component vector added to the state
+            auto input = h(eval(mu + getDerivator<DOF>()));
+            //Calculate the Jacobian and the result of the measurement model
+            update_impl(hx, input, h, H);
+            //Apply null space constraint
+            H=H*(Matrix<double,DOF,DOF>::Identity()-Matrix<double,DOF,DOF>(N.asDiagonal()));
+            //The measurement model has to be differentiable
+            assert(!H.hasNaN() && "Differentiation resulted in an indeterminate form");
+            //Calculate the Innovation covariance
+            auto S = H * sigma * H.transpose() + R;
+            //Calcualte the Kalman Gain
+            auto K = (sigma * H.transpose() * S.inverse()).eval();
+            //Calculate the updated state estimate
+            //Calcualte the updated covariance estimate
+            add_diff(mu, K * (z - hx), K * H,N);
+        }
+
+
 
         /**
          * Update the State Estimate with automatically differentiated Jacobian Matrices and non-Additive Noise
@@ -577,6 +653,53 @@ namespace adekf {
 
             //Set the new Estimated Value
             mu = newMu;
+            //Calculate the new Covariance Matrix
+            sigma = D * (sigma - (KH * sigma)) * D.transpose();
+        }
+
+        /**
+      * Add an Offset to the Estimated State, if the State is a CompoundManifold
+       *
+       * For CompoundManifolds we can optimise the Jacobian D, since each derivative is only dependent on one substate
+      * @tparam Manifold The Type of Manifold used as State
+      * @tparam Derived The Type of Matrix used as the Result of K*H
+      * @param diff The Difference to be added to the state
+      * @param KH The Multiplication of Kalman Gain and Measurement-Jacobian
+      */
+        template<typename Derived, typename Nullspace>
+        void add_diff(const CompoundManifold &, const MatrixType<DOF, 1> &diff, const MatrixBase<Derived> &KH, const MatrixBase<Nullspace> & N )   {
+            //check if compoundManifold is simple vector this may look a bit dirty but it allows to use the ADEKF_MANIFOLD for vector parts only without significant speed loss
+            if(mu.MAN_DOF==0){
+                add_diff<Derived>(diff,diff,KH);
+                return;
+            }
+
+            //Add the Difference on the Estimated State
+            State newMu = mu + diff;
+            //Definition of the Jacobian of the Boxplus Function
+            JacobianOf<State> D = D.Identity(DOF, DOF);
+            //Counter for the current dof at iterating
+            int dof = 0;
+            //calculate the part of the Jacobian which belongs to the Manifold
+            auto calcManifoldJacobian = [&](auto &manifold) {
+                int constexpr curDOF = DOFOf<decltype(manifold)>;
+                //Calculate the Jacobian of the Boxplus Function
+                auto plus_diff = eval(
+                        ((manifold + getDerivator<curDOF>()) + diff.template segment<curDOF>(dof) - manifold));
+                for (int i = 0; i < curDOF; ++i) {
+                    D.template block<1, curDOF>(dof + i, dof) = plus_diff[i].v;
+                }
+
+                dof += curDOF;
+            };
+            //apply on each manifold, for vectors the Jacobian is the Identity
+            mu.forEachManifold(calcManifoldJacobian);
+
+            //Set the new Estimated Value
+
+            mu = newMu;
+            //nullspace constraint
+            D=D-(D*N-N)*(N.transpose()*N).inverse()*N.transpose();
             //Calculate the new Covariance Matrix
             sigma = D * (sigma - (KH * sigma)) * D.transpose();
         }

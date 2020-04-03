@@ -145,7 +145,7 @@ void testHanddataset(bool withPrecision, unsigned repetitions) {
         for (const IMUData& data : imuDataVector) {
             TrackerData tData = trackerDataVector[trackerIdx];
 
-            ekfwj.predictWithJacobian([](auto state, auto u){state = state + (0.01 * u);}, [](auto, auto u){Vector3d rot = -u*0.01;return AngleAxisd(rot.norm(), rot.normalized()).toRotationMatrix();}, Matrix3d::Identity(), data.gyro);
+            ekfwj.predictWithJacobian([](auto state, auto u){state = state * SO3(0.01 * u);}, [](auto, auto u){Vector3d rot = -u*0.01;return AngleAxisd(rot.norm(), rot.normalized()).toRotationMatrix();}, Matrix3d::Identity(), data.gyro);
 
             if (tData.timestamp <= data.timestamp) {
                 ekfwj.updateManifoldWithJacobian([](auto state){return state;}, [](auto){return Matrix3d::Identity();}, [](auto, auto &diff){Vector3d rot = -diff;return AngleAxisd(rot.norm(), rot.normalized()).toRotationMatrix();}, Matrix3d::Identity() * 0.1, SO3d(tData.rot));
@@ -165,7 +165,7 @@ void testHanddataset(bool withPrecision, unsigned repetitions) {
         for (const IMUData& data : imuDataVector) {
             TrackerData tData = trackerDataVector[trackerIdx];
 
-            ekf.predict([](auto state, auto u){state = state + (0.01 * u);}, Matrix3d::Identity(), data.gyro);
+            ekf.predict([](auto state, auto u){state = state *SO3(0.01 * u);}, Matrix3d::Identity(), data.gyro);
 
             if (tData.timestamp <= data.timestamp) {
                 ekf.update([](auto state){return state;}, Matrix3d::Identity() * 0.1, SO3d(tData.rot));

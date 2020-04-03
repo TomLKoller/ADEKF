@@ -6,6 +6,58 @@
 
 namespace adekf::viz {
 
+
+    VectorRingBuffer::VectorRingBuffer(size_t buffer_size, const Eigen::VectorXd &first_vector, size_t stride)
+            : buffer_size(buffer_size), current(0), current_size(0), stride_counter(-1), stride(stride) {
+        for (size_t i = 0; i < first_vector.rows(); i++) {
+            buffer.push_back((double *) calloc(buffer_size, sizeof(double)));
+            std::fill_n(buffer.back(), buffer_size, 0);
+        }
+        append(first_vector);
+    }
+
+    void VectorRingBuffer::append(const Eigen::VectorXd &vector) {
+        if (stride > 1) {
+            stride_counter = (stride_counter + 1) % stride;
+            if (stride_counter !=0) {
+                return;
+            }
+        }
+
+        for (size_t i = 0; i < vector.rows(); i++) {
+            buffer[i][current] = vector(i);
+        }
+        if (current_size < buffer_size)
+            current_size++;
+        current++;
+        if (current > current_size)
+            current = current % current_size;
+    }
+
+    double VectorRingBuffer::operator()(size_t element, size_t index) {
+        return buffer[index][(element - current + buffer_size) % buffer_size];
+    }
+
+    double *VectorRingBuffer::getBuffer(size_t index) {
+        return buffer[index];
+    }
+
+    size_t VectorRingBuffer::getBufferSize() {
+        return buffer_size;
+    }
+
+    size_t VectorRingBuffer::getCurrentSize() {
+        return current_size;
+    }
+
+    BufferReader::BufferReader(VectorRingBuffer &buffer, size_t index) : buffer(buffer), index(index) {
+    }
+
+    inline double BufferReader::operator()(size_t element) {
+        return buffer(element, index);
+    }
+
+
     void LinePlot::initPlots() {
         class_object = std::shared_ptr<LinePlot>(new LinePlot());
     }
@@ -58,10 +110,10 @@ namespace adekf::viz {
     }
 
     void
-    LinePlot::plotVector(const Eigen::VectorXd &vector, const char *title, size_t buffer_size, const char *legend) {
+    LinePlot::plotVector(const Eigen::VectorXd &vector, const char *title, size_t buffer_size, const char *legend,size_t stride) {
         auto it = plot_data.find(title);
         if (it == plot_data.end()) {
-            plot_data.emplace(title, VectorRingBuffer(buffer_size, vector));
+            plot_data.emplace(title, VectorRingBuffer(buffer_size, vector,stride));
             size_t size = vector.rows(); // to not copy vector
             ioService.post([=]() { createPlot(size, title, buffer_size, legend); });
         } else {
