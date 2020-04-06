@@ -2,9 +2,6 @@
 #include <boost/preprocessor/seq.hpp>
 #include <boost/preprocessor/tuple.hpp>
 #include "ADEKFUtils.h"
-#define ADEKF_PLUSRESULT(T1, T2) decltype(std::declval<T1>() + std::declval<T2>())
-
-#define ADEKF_MINUSRESULT(T1, T2) decltype(std::declval<T1>() - std::declval<T2>())
 
 //////////////////////////////////////////////////////////
 

@@ -2,8 +2,8 @@
 // Created by tomlucas on 02.04.20.
 //
 
-#ifndef CYLINDEREXAMPLE_GAUSSIANNOISEVECTOR_H
-#define CYLINDEREXAMPLE_GAUSSIANNOISEVECTOR_H
+#ifndef ADEKF_GAUSSIANNOISEVECTOR_H
+#define ADEKF_GAUSSIANNOISEVECTOR_H
 
 #include <Eigen/Core>
 #include <random>
@@ -51,4 +51,4 @@ namespace adekf {
 
 }
 
-#endif //CYLINDEREXAMPLE_GAUSSIANNOISEVECTOR_H
+#endif //ADEKF_GAUSSIANNOISEVECTOR_H

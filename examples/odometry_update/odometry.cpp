@@ -17,7 +17,6 @@ ADEKF_MANIFOLD(GravityState,((adekf::SO3, orientation))((adekf::DirectionVector,
 
 int main(int argc, char * argv[]) {
 
-
     //Simple Example with no orientation
     adekf::viz::initGuis(argc,argv);
     Eigen::Vector3d acc{1, 0, 0};

@@ -2,8 +2,8 @@
 // Created by tomlucas on 24.03.20.
 //
 
-#ifndef CYLINDEREXAMPLE_HEATMAP_H
-#define CYLINDEREXAMPLE_HEATMAP_H
+#ifndef ADEKF_HEATMAP_H
+#define ADEKF_HEATMAP_H
 
 #include <Eigen/Core>
 #include <memory>
@@ -65,4 +65,4 @@ namespace adekf::viz{
     };
 }
 
-#endif //CYLINDEREXAMPLE_HEATMAP_H
+#endif //ADEKF_HEATMAP_H

@@ -47,3 +47,11 @@ vtk_module_autoinit(
         TARGETS CylinderExample
         MODULES ${VTK_LIBRARIES}
 )
+
+
+#find_package(GTest REQUIRED)
+include (GoogleTest)
+add_executable(MANIFOLDTEST MACOSX_BUNDLE  ManifoldTest.cpp)
+target_include_directories(MANIFOLDTEST PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(MANIFOLDTEST PUBLIC  ${Boost_LIBRARIES}  ADEKF::ADEKF ${CMAKE_THREAD_LIBS_INIT} gtest gtest_main)
+gtest_add_tests(TARGET MANIFOLDTEST AUTO)

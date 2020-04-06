@@ -150,14 +150,14 @@ namespace adekf {
  * Cuts a segment from the vector noise from start to start+size
  *
  * @param noise  the noise vector
- * @param start  the start of the part of the noise
- * @param size the size of the noise vector
+ * @param start  the start of the segment of the noise
+ * @param size the size of the noise vector segment
  */
 #define NOISE_WITH_OTHER_NAME(noise, start, size) noise.template segment<size>(start)
 /**
- * Calls NOISE3 but assumes, that the noise vector is called "noise"
- * @param start  the start of the part of the noise
- * @param size the size of the noise vector
+ * Calls NOISE_WITH_OTHER_NAME but assumes, that the noise vector is called "noise"
+ * @param start  the start of the segment of the noise
+ * @param size the size of the noise vector segment
  */
 #define NOISE_WITHOUT_NOISE_NAME(start, size) NOISE_WITH_OTHER_NAME(noise,start,size)
 /**
@@ -165,9 +165,13 @@ namespace adekf {
  */
 #define GET_NOISE_MACRO(_1, _2, _3, NAME, ...) NAME
 /**
+ * Cuts a segment from the vector noise from start to start+size
+ *
  * Calls either NOISE_WITH_OTHER_NAME or NOISE_WITHOUT_NOISE_NAME depending on the amount of args
  * call NOISE(<start>, <size>) if your noise vector is called "noise"
  * call NOISE(<noise-vector>,<start>,<size>) otherwise
+ *
+ * Results in a segment of the noise vector from start to start+size (exclusive) of length size
  */
 #define NOISE(...) GET_NOISE_MACRO(__VA_ARGS__, NOISE_WITH_OTHER_NAME, NOISE_WITHOUT_NOISE_NAME)(__VA_ARGS__)
 
@@ -175,12 +179,34 @@ namespace adekf {
 //Macros for output operations
 
 #ifndef LOG_STREAM
+/**
+ * Stream Macro defaults to std::cout
+ * User can define to send data to any other stream (e.g. a file stream)
+ */
 #define LOG_STREAM std::cout
 #endif
 #ifndef ERR_STREAM
+/**
+ * Error stream macro defaults to std::err
+ * User can define to send data to any other stream
+ */
 #define ERR_STREAM std::err
 #endif
+//just a define for << std::endl
 #define LOG_END << std::endl;
+
+
+
+//Macros for Type results
+/**
+ * The resulting type if you add scalars of type T1 and T2  (T1+T2)
+ */
+#define ADEKF_PLUSRESULT(T1, T2) decltype(std::declval<T1>() + std::declval<T2>())
+
+/**
+ * The resulting type if you subtract scalars of type T1 and T2 (T1-T2)
+ */
+#define ADEKF_MINUSRESULT(T1, T2) decltype(std::declval<T1>() - std::declval<T2>())
 
 
 /**
@@ -193,7 +219,7 @@ namespace adekf {
         return matrix.allFinite();
     }
 /**
- * does nothing just for variadic resolve of assert_inputs(T first,ARGS)
+ * does nothing just for variadic resolve of assert_inputs(T first,ARGS) with 0 arguments
  */
     void inline assert_finite() {
 

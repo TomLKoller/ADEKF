@@ -56,6 +56,5 @@ if (${PROJECT_NAME}_BUILD_TESTS)
     #add_subdirectory(examples/velocity_without_orientation_tracking examples/velocity_without_orientation_tracking/build)
     #add_subdirectory(examples/testingField examples/testingField/build)
     add_subdirectory(examples/odometry_update examples/odometry_update/build)
-
 endif ()
 
