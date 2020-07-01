@@ -1,13 +1,17 @@
-cmake_minimum_required (VERSION 3.0)
+cmake_minimum_required (VERSION 3.1)
 project("ADEKF" VERSION 1.0.0
                 DESCRIPTION "Automatic Differentiated Extended Kalman Filter (ADEKF) - This is a generic EKF Implementation that uses automatic differentiation to get rid of the need to define Jacobians."
                 LANGUAGES CXX)
+
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -march=native")
 
 include(GNUInstallDirs)
 
 add_library(${PROJECT_NAME} INTERFACE)
 
-option(${PROJECT_NAME}_BUILD_TESTS "Build Tests" ON)
+option(${PROJECT_NAME}_BUILD_EXAMPLES "Build examples" OFF)
+option(${PROJECT_NAME}_BUILD_TESTS "Build Tests" OFF)
+#option(${PROJECT_NAME}_BUILD_RESEARCH "Build Research" OFF)
 
 target_include_directories(${PROJECT_NAME} INTERFACE
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/ADEKF>
@@ -49,9 +53,30 @@ install(FILES "${PROJECT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
 
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/ADEKF DESTINATION include)
 
-if (${PROJECT_NAME}_BUILD_TESTS)
-    #add_subdirectory(examples/slam_and_orientation examples/slam_and_orientation/build)
-    #add_subdirectory(examples/velocity_without_orientation_tracking examples/velocity_without_orientation_tracking/build)
-    add_subdirectory(examples/testingField examples/testingField/build)
+
+if(IS_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/ADEKF_VIZ)
+    message("Building Vizualisation library")
+    add_subdirectory(ADEKF_VIZ/)
+endif()
+
+if (${PROJECT_NAME}_BUILD_EXAMPLES)
+    message("Building Examples")
+    add_subdirectory(examples/slam_and_orientation examples/slam_and_orientation/build)
+    add_subdirectory(examples/velocity_without_orientation_tracking examples/velocity_without_orientation_tracking/build)
+    #add_subdirectory(examples/testingField examples/testingField/build)
 endif ()
+
+
+#if (${PROJECT_NAME}_BUILD_RESEARCH)
+#    message("Building Research")
+    #add_subdirectory(research/odometry_update research/odometry_update/build)
+#    add_subdirectory(research/IMM research/IMM/build)
+    #add_subdirectory(research/DutchTrackCycling research/DutchTrackCycling/build)
+#endif ()
+
+
+if(${PROJECT_NAME}_BUILD_TESTS)
+    message("Building Tests")
+    add_subdirectory(tests)
+endif()
 

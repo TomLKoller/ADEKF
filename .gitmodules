@@ -1,0 +1,3 @@
+[submodule "ADEKF_VIZ"]
+	path = ADEKF_VIZ
+	url = git@gitlab.informatik.uni-bremen.de:tomlucas/adekf_viz_dev.git

@@ -2,7 +2,7 @@
 
 #include<Eigen/Geometry>
 #include "../ceres/rotation.h"
-
+#include "../ADEKFUtils.h"
 
 
 namespace adekf {
@@ -36,7 +36,7 @@ namespace adekf {
 
 
 template<typename Scalar>
-class SO3: public Eigen::Quaternion<Scalar> ,public Manifold{
+class SO3: public Manifold, public Eigen::Quaternion<Scalar> {
 public:
 	using ScalarType = Scalar;
 	static constexpr unsigned DOF = 3;
@@ -49,10 +49,40 @@ public:
 	SO3(const Eigen::Quaternion<Scalar> &src = Eigen::Quaternion<Scalar>::Identity()) :
 			Eigen::Quaternion<Scalar>(src) {};
 
-	SO3(const Eigen::Matrix<Scalar, DOF, DOF> &rotationMatrix) :
-			Eigen::Quaternion<Scalar>(rotationMatrix) {};
 
-	template<typename OtherScalar>
+    SO3(const Eigen::Matrix<Scalar, DOF, DOF>  &rotationMatrix) :
+            Eigen::Quaternion<Scalar>(rotationMatrix) {};
+
+	template<typename Derived>
+	SO3(const Eigen::MatrixBase<Derived> & omega){
+        Scalar expData[4];
+        Eigen::Ref<const Eigen::Matrix<Scalar, DOF, 1>> buffer = omega;
+        ceres::AngleAxisToQuaternion(buffer.data(), expData);
+        *this=SO3<Scalar>(expData[0], expData[1], expData[2], expData[3]);
+	}
+	/**
+	 * Constructor to assign from other scalars (if OtherScalar is convertible non explicitly to Scalar)
+	 * @tparam OtherScalar  The scalar of the other SO3
+	 * @param other the other SO3
+	 */
+    template<typename OtherScalar>
+	SO3(const SO3<OtherScalar> & other):Eigen::Quaternion<Scalar>(other){
+	}
+
+    SO3(Scalar * src): Eigen::Quaternion<Scalar>(src){
+
+    }
+    SO3(const Scalar * src): Eigen::Quaternion<Scalar>(src){
+
+    }
+
+    void toPointer(Scalar *dest){
+        (Eigen::Map<Eigen::Quaternion<Scalar> >(dest))=*this;
+    }
+
+
+
+    template<typename OtherScalar>
 	auto operator*(const SO3<OtherScalar> &other) const {
 		return adekf::SO3(this->w() * other.w() - this->x() * other.x() - this->y() * other.y() - this->z() * other.z(),
 				this->w() * other.x() + this->x() * other.w() + this->y() * other.z() - this->z() * other.y(),
@@ -70,30 +100,32 @@ public:
 	SO3<Scalar> inverse() const {
 		return SO3<Scalar>(Eigen::Quaternion<Scalar>::inverse());
 	}
+	SO3<Scalar> conjugate() const{
+	    return SO3<Scalar>(Eigen::Quaternion<Scalar>::conjugate());
+	}
+
 
 	template<typename Derived, typename OtherScalar = typename Derived::Scalar>
 	auto operator+(const Eigen::MatrixBase<Derived> &delta) const {
-		OtherScalar expData[4];
-		Eigen::Ref<const Eigen::Matrix<OtherScalar, DOF, 1>> buffer = delta;
-
-		ceres::AngleAxisToQuaternion(buffer.data(), expData);
-
-		SO3<OtherScalar> exp(expData[0], expData[1], expData[2], expData[3]);
-		return *this *exp;
+        return SO3<OtherScalar>(delta)* *this;
 	}
 
 	template<typename OtherScalar>
 	auto operator-(const SO3<OtherScalar> &other) const {
-		adekf::SO3 delta(other.inverse() * *this);
+		adekf::SO3 delta(*this *other.conjugate());
 		using ResultScalar=typename decltype(delta)::ScalarType;
 		Eigen::Matrix<ResultScalar, DOF, 1> result;
 		ResultScalar deltaData[4] = { delta.coeffs().data()[3], delta.coeffs().data()[0], delta.coeffs().data()[1],
-				delta.coeffs().data()[2] };
+				delta.coeffs().data()[2] };//Eigen storage order is x y z w while ceres is w x y z
 		ceres::QuaternionToAngleAxis(deltaData, result.data());
 		return result;
 	}
 
-	friend std::ostream &operator<<(std::ostream &stream, const SO3<Scalar> &state) {
+
+
+
+
+    friend std::ostream &operator<<(std::ostream &stream, const SO3<Scalar> &state) {
 		return stream << state.coeffs().transpose() << " ";
 	}
 
@@ -104,6 +136,9 @@ public:
 		return is;
 	}
 };
+
+template<typename Derived>
+SO3(const Eigen::MatrixBase<Derived> & ) -> SO3<typename Derived::Scalar>;
 
 using SO3f = SO3<float>;
 using SO3d = SO3<double>;
@@ -148,13 +183,13 @@ namespace Eigen {
         typedef typename XprType::CoeffReturnType CoeffReturnType;
         enum {
             CoeffReadCost = evaluator<ArgTypeNestedCleaned>::CoeffReadCost,
-            Flags = Eigen::ColMajor
+            Flags = Eigen::ColMajor | Eigen::LinearAccessBit
         };
 
         evaluator(const XprType& xpr)
                 : m_argImpl(xpr.result), m_rows(xpr.rows())
         { }
-        CoeffReturnType coeff(Index row, Index col) const
+        CoeffReturnType coeff(Index row, Index col=0) const
         {
            return m_argImpl.coeff(row,col);
         }

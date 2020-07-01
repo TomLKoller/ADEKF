@@ -1,0 +1,8 @@
+cmake_minimum_required (VERSION 3.1)
+cmake_policy(SET CMP0054 NEW)
+find_package(Boost 1.37 REQUIRED)
+include (GoogleTest)
+add_executable(MANIFOLDTEST MACOSX_BUNDLE ManifoldTest.cpp)
+target_include_directories(MANIFOLDTEST PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(MANIFOLDTEST PUBLIC  ${Boost_LIBRARIES}  ADEKF  gtest gtest_main)
+gtest_add_tests(TARGET MANIFOLDTEST AUTO)

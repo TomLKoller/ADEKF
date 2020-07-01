@@ -9,6 +9,8 @@
 
 
 namespace adekf {
+
+
     using namespace Eigen;
     using namespace std::placeholders;
 
@@ -47,10 +49,7 @@ namespace adekf {
         template<int N, int M>
         static constexpr bool dynamicMatrix = N * M > USE_EIGEN_DYNAMIC_THRESHHOLD;
 
-        /**
-         * The Covariance of the State
-         */
-        using Covariance = typename std::conditional<dynamicMatrix<DOF, DOF>, MatrixType<-1, -1>, SquareMatrixType<DOF>>::type;
+
 
         /**
          * The Jacobian of a given State or Measurement Class
@@ -69,6 +68,11 @@ namespace adekf {
         static_assert(DOF > 0, "Only Fixed Size States and Manifolds are supported");
 
     public:
+        /**
+         * The Covariance type of the State
+         */
+        using Covariance = typename std::conditional<dynamicMatrix<DOF, DOF>, MatrixType<-1, -1>, SquareMatrixType<DOF>>::type;
+
         /**
          * The Expected Value of the State
          */
@@ -107,13 +111,14 @@ namespace adekf {
             f(input);
             //Calculate the Jacobian Matrix and set the new State Estimate
             predict_impl(input, f, input, F);
-
             //The dynamic model has to be differentiable
             assert(!F.hasNaN() && "Differentiation resulted in an indeterminate form");
             //Calculate the new Covariance
             sigma = F * sigma * F.transpose() + Q;
         }
 
+
+        
         /**
          * Predict the State Estimate with automatically differentiated Jacobian Matrices and non additive Noise
          * @tparam NoiseDim The Dimension of the Noise Vector w
@@ -144,7 +149,9 @@ namespace adekf {
             //Calculate the new Covariance
             sigma = F.template leftCols<DOF>() * sigma * F.template leftCols<DOF>().transpose() +
                     F.template rightCols<NoiseDim>() * Q * F.template rightCols<NoiseDim>().transpose();
-        }
+         }
+
+
 
         /**
          * Predict the State Estimate
@@ -186,7 +193,7 @@ namespace adekf {
             //The jacobian matrix to be calculated from the measurement model
             JacobianOf<Measurement> H(DOFOf<Measurement>, DOF);
             //The result of the measurement model
-            Measurement hx;
+            typename StateInfo<Measurement>::type hx;
             //The result of the measurement model with a dual component vector added to the state
             auto input = h(eval(mu + getDerivator<DOF>()));
             //Calculate the Jacobian and the result of the measurement model
@@ -198,9 +205,70 @@ namespace adekf {
             //Calcualte the Kalman Gain
             auto K = (sigma * H.transpose() * S.inverse()).eval();
             //Calculate the updated state estimate
+            auto delta=eval(z-hx);
             //Calcualte the updated covariance estimate
-            add_diff(mu, K * (z - hx), K * H);
+            add_diff(mu, K * delta, K * H);
+
         }
+        /**
+         * Transpose overload to handle likelihood of scalar updates
+         */
+        template<typename Type>
+        auto transpose(const Type & object){
+            return object.transpose();
+        }
+        double transpose(double value){
+            return value;
+        }
+
+        template<typename Derived>
+        double exp(const Eigen::MatrixBase<Derived> & matrix){
+            assert(matrix.rows()==1 && matrix.cols()==1);
+            return std::exp(matrix(0,0));
+        }
+
+        /**
+        * Update the State Estimate with automatically differentiated Jacobian Matrices
+        * @tparam Measurement Type of the Measurement
+        * @tparam MeasurementModel Type of the Measurement Model Functor
+        * @tparam Variables Types of Auxiliary Variables for the Measurement Model
+        * @param log_likelihood output: the likelihood of the given measurement
+        * @param measurementModel The Measurement Model h(x,variables)
+        * @param R Additive Measurement Noise Covariance
+        * @param z Measurement
+        * @param variables Auxiliary Variables for the Measurement Model
+        */
+        template<typename Measurement, typename MeasurementModel, typename Derived, typename... Variables>
+        void update(double & log_likelihood, MeasurementModel measurementModel, const MatrixBase<Derived> &R, const Measurement &z,
+                    const Variables &...variables) {
+            //Bind the auxiliary variables to the measurement model
+            auto h = [&measurementModel, &variables...](const auto &state) {
+                return eval(measurementModel(state, variables ...));
+            };
+            //The jacobian matrix to be calculated from the measurement model
+            JacobianOf<Measurement> H(DOFOf<Measurement>, DOF);
+            //The result of the measurement model
+            typename StateInfo<Measurement>::type hx;
+            //The result of the measurement model with a dual component vector added to the state
+            auto input = h(eval(mu + getDerivator<DOF>()));
+            //Calculate the Jacobian and the result of the measurement model
+            update_impl(hx, input, h, H);
+            //The measurement model has to be differentiable
+            assert(!H.hasNaN() && "Differentiation resulted in an indeterminate form");
+            //Calculate the Innovation covariance
+            auto S = H * sigma * H.transpose() + R;
+            //Calcualte the Kalman Gain
+            auto K = (sigma * H.transpose() * S.inverse()).eval();
+            //Calculate the updated state estimate
+            auto delta=eval(z-hx);
+            //std::cout << delta << std::endl;
+            log_likelihood= -0.5 * transpose(delta) * S.inverse() * delta+log(1/sqrt(S.determinant() * pow((2 * M_PI), S.rows())));
+            //Calcualte the updated covariance estimate
+            add_diff(mu, K * delta, K * H);
+
+        }
+
+
 
         /**
          * Update the State Estimate with automatically differentiated Jacobian Matrices and non-Additive Noise
@@ -225,7 +293,7 @@ namespace adekf {
             //The jacobian matrix to be calculated from the measurement model
             MatrixType<MDOF, DOF + NoiseDim> H(MDOF, DOF);
             //The result of the measurement model
-            Measurement hx;
+            typename StateInfo<Measurement>::type hx;
             //Generate a Vector of dual components for the state and noise vector
             auto derivator = getDerivator<DOF + NoiseDim>();
             //The result of the measurement model with a dual component vector added to the state and the noise
@@ -463,7 +531,7 @@ namespace adekf {
             modelResult = h(mu);
             //calculate the Jacobian
             auto result = input - modelResult;
-            for (int i = 0; i < DOF; ++i) {
+            for (int i = 0; i < DOFOf<Measurement>; ++i) {
                 H.row(i) = result(i).v;
             }
 
@@ -579,6 +647,53 @@ namespace adekf {
             sigma = D * (sigma - (KH * sigma)) * D.transpose();
         }
 
+        /**
+      * Add an Offset to the Estimated State, if the State is a CompoundManifold
+       *
+       * For CompoundManifolds we can optimise the Jacobian D, since each derivative is only dependent on one substate
+      * @tparam Manifold The Type of Manifold used as State
+      * @tparam Derived The Type of Matrix used as the Result of K*H
+      * @param diff The Difference to be added to the state
+      * @param KH The Multiplication of Kalman Gain and Measurement-Jacobian
+      */
+        template<typename Derived, typename Nullspace>
+        void add_diff(const CompoundManifold &, const MatrixType<DOF, 1> &diff, const MatrixBase<Derived> &KH, const MatrixBase<Nullspace> & N )   {
+            //check if compoundManifold is simple vector this may look a bit dirty but it allows to use the ADEKF_MANIFOLD for vector parts only without significant speed loss
+            if(mu.MAN_DOF==0){
+                add_diff<Derived>(diff,diff,KH);
+                return;
+            }
+
+            //Add the Difference on the Estimated State
+            State newMu = mu + diff;
+            //Definition of the Jacobian of the Boxplus Function
+            JacobianOf<State> D = D.Identity(DOF, DOF);
+            //Counter for the current dof at iterating
+            int dof = 0;
+            //calculate the part of the Jacobian which belongs to the Manifold
+            auto calcManifoldJacobian = [&](auto &manifold) {
+                int constexpr curDOF = DOFOf<decltype(manifold)>;
+                //Calculate the Jacobian of the Boxplus Function
+                auto plus_diff = eval(
+                        ((manifold + getDerivator<curDOF>()) + diff.template segment<curDOF>(dof) - manifold));
+                for (int i = 0; i < curDOF; ++i) {
+                    D.template block<1, curDOF>(dof + i, dof) = plus_diff[i].v;
+                }
+
+                dof += curDOF;
+            };
+            //apply on each manifold, for vectors the Jacobian is the Identity
+            mu.forEachManifold(calcManifoldJacobian);
+
+            //Set the new Estimated Value
+
+            mu = newMu;
+            //nullspace constraint
+            D=D-(D*N-N)*(N.transpose()*N).inverse()*N.transpose();
+            //Calculate the new Covariance Matrix
+            sigma = D * (sigma - (KH * sigma)) * D.transpose();
+        }
+
 
         /**
          * Add an Offset to the Estimated State, if the Statesigma is a Matrix
@@ -594,27 +709,7 @@ namespace adekf {
             sigma = sigma - (KH * sigma);
         }
 
-        /**
-         * Generates a Vector of dual Components
-         * @tparam Size The Size of the Vector and the dual components
-         * @return A dual component vector, to be added to a state
-         */
-        template<unsigned Size>
-        static const  Eigen::Matrix<ceres::Jet<double, Size>, Size, 1> & getDerivator() {
-            //The resulting dual component vector
-            static Eigen::Matrix<ceres::Jet<double, Size>, Size, 1> result;
-            //only set on first call
-            static bool first_call = true;
-            //Set the first coefficient in the first row to 1, the second in the second and so on.
-            if (first_call) {
-                result.setZero();
-                for (unsigned i = 0; i < Size; ++i)
-                    result[i].v[i] = 1;// = ceres::Jet<ScalarType, Size>(0, i);
-                first_call = false;
-                std::cout << "first call " << std::endl;
-            }
-            return result;
-        }
+
     };
 
 

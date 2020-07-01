@@ -2,9 +2,6 @@
 #include <boost/preprocessor/seq.hpp>
 #include <boost/preprocessor/tuple.hpp>
 #include "ADEKFUtils.h"
-#define ADEKF_PLUSRESULT(T1, T2) decltype(std::declval<T1>() + std::declval<T2>())
-
-#define ADEKF_MINUSRESULT(T1, T2) decltype(std::declval<T1>() - std::declval<T2>())
 
 //////////////////////////////////////////////////////////
 
@@ -25,6 +22,7 @@
 //fix for empty sequence
 #define BOOST_PP_SEQ_ENUM_0
 #define ADEKF_TRANSFORM_COMMA(macro, entries) BOOST_PP_SEQ_ENUM(TRANSFORM_IF_NOT_EMPTY( ADEKF_APPLY_MACRO_ON_TUPLE, macro, entries))
+#define ADEKF_TRANSFORM_COMMA_UNCHECKED(macro,sequence) BOOST_PP_SEQ_ENUM(BOOST_PP_SEQ_TRANSFORM_S(1,ADEKF_APPLY_MACRO_ON_TUPLE,macro,sequence))
 
 #define ADEKF_TRANSFORM(macro, entries) FOR_EACH_IF_NOT_EMPTY(ADEKF_APPLY_MACRO_ON_TUPLE, macro, entries)
 
@@ -46,6 +44,8 @@ BOOST_PP_FOR_1( \
 
 #define ADEKF_CONSTRUCTOR_ARGS_NO_DEFAULT(name)  const typename adekf::StateInfo<decltype(name)>::type & arg_##name
 
+
+#define ADEKF_RECURSIVE_COMMA(seq,output_function) BOOST_PP_SEQ_ENUM(ADEKF_RECURSIVE(seq,output_function))
 
 /**
  * Struct to get default values differently for manifolds
@@ -73,13 +73,14 @@ struct defaultValue<Eigen::MatrixBase<DERIVED> >{
 #define ADEKF_COPY_CONSTRUCTOR(name) name(other.name)
 #define ADEKF_ADD_DOF(name) + ADEKF_GETDOF(name)
 #define ADEKF_ASSIGN(name) name=other.name;
-#define ADEKF_STREAM_ASSIGN(name) << name
+#define ADEKF_ARG_NAME(name)  arg_##name
+#define ADEKF_STREAM_ASSIGN_VECTOR(v_members) vector_part << ADEKF_TRANSFORM_COMMA_UNCHECKED(ADEKF_ARG_NAME,v_members);
 
 #define ADEKF_PLUS_OUTPUT(r, state) ADEKF_PLUS_OUTPUT_IMPL state
 #define ADEKF_PLUS_OUTPUT_IMPL(len, head, seq, dof) (head + __delta.template segment<ADEKF_GETDOF(head)>(dof))
 
 #define ADEKF_MINUS_OUTPUT(r, state) ADEKF_MINUS_OUTPUT_IMPL state
-#define ADEKF_MINUS_OUTPUT_IMPL(len, head, seq, dof) << head - __other.head
+#define ADEKF_MINUS_OUTPUT_IMPL(len, head, seq, dof)  (head - __other.head)
 
 
 #define ADEKF_OUTSTREAM_IMPL(name) << __state.name << std::endl
@@ -96,7 +97,7 @@ name<T>( \
     ADEKF_TRANSFORM_COMMA(ADEKF_CONSTRUCTOR_ARGS_NO_DEFAULT,m_members) BOOST_PP_COMMA_IF(BOOST_PP_BITAND(ADEKF_SEQ_NOT_EMPTY(m_members),ADEKF_SEQ_NOT_EMPTY(v_members))) ADEKF_TRANSFORM_COMMA(ADEKF_CONSTRUCTOR_ARGS_NO_DEFAULT,v_members) \
     ) : \
     ADEKF_TRANSFORM_COMMA(ADEKF_CONSTRUCTOR_SETTERS,m_members)  BOOST_PP_COMMA_IF(ADEKF_SEQ_NOT_EMPTY(m_members)) vector_part() ADEKF_IF_SEQ_NOT_EMPTY(v_members,ADEKF_RECURSIVE,v_members,ADEKF_MAP_OUTPUT)  {\
-    vector_part ADEKF_TRANSFORM(ADEKF_STREAM_ASSIGN,v_members);\
+     ADEKF_IF_SEQ_NOT_EMPTY(v_members,ADEKF_STREAM_ASSIGN_VECTOR,v_members)\
 }\
 name<T>(const name<T> & other):ADEKF_TRANSFORM_COMMA(ADEKF_COPY_CONSTRUCTOR,m_members)BOOST_PP_COMMA_IF(ADEKF_SEQ_NOT_EMPTY(m_members)) vector_part(other.vector_part) ADEKF_IF_SEQ_NOT_EMPTY(v_members,ADEKF_RECURSIVE,v_members,ADEKF_MAP_OUTPUT){}
 
@@ -120,19 +121,27 @@ name<T>( \
 void operator=(const name<T> & other){\
   ADEKF_TRANSFORM(ADEKF_ASSIGN,m_members)\
   vector_part=other.vector_part;\
+}\
+void operator=(const name<T> && other){\
+  ADEKF_TRANSFORM(ADEKF_ASSIGN,m_members)\
+  vector_part=other.vector_part;\
 }
 
+
+#define VECTOR_PART_BOXPLUS(m_members) BOOST_PP_COMMA_IF(ADEKF_SEQ_NOT_EMPTY(m_members)) vector_part+__delta.template tail<VEC_DOF>()
+
 #define ADEKF_BOXPLUS(name, m_members, v_members) \
-template<typename T2> \
-name<ADEKF_PLUSRESULT(T,T2)> operator+(const Eigen::Matrix<T2, DOF, 1>& __delta) const { \
-     return name<ADEKF_PLUSRESULT(T,T2)>{ADEKF_IF_SEQ_NOT_EMPTY(m_members,ADEKF_RECURSIVE,m_members,ADEKF_PLUS_OUTPUT) BOOST_PP_COMMA_IF(ADEKF_SEQ_NOT_EMPTY(m_members)) vector_part+__delta.template segment<VEC_DOF>(MAN_DOF)}; \
+template<typename Derived> \
+name<ADEKF_PLUSRESULT(T,typename Derived::Scalar)> operator+(const Eigen::MatrixBase<Derived>& __delta) const { \
+EIGEN_STATIC_ASSERT_VECTOR_SPECIFIC_SIZE(Derived, DOF)\
+     return name<ADEKF_PLUSRESULT(T,typename Derived::Scalar)>{ADEKF_IF_SEQ_NOT_EMPTY(m_members,ADEKF_RECURSIVE_COMMA,m_members,ADEKF_PLUS_OUTPUT) ADEKF_IF_SEQ_NOT_EMPTY(v_members,VECTOR_PART_BOXPLUS,m_members) }; \
 }
 
 
 #define ADEKF_BOXMINUS(name, m_members,v_members) \
 template<typename T2> \
 Eigen::Matrix<ADEKF_MINUSRESULT(T,T2),DOF,1> operator-(const name<T2>& __other) const { \
-    Eigen::Matrix<ADEKF_MINUSRESULT(T,T2),DOF,1> __result; __result ADEKF_IF_SEQ_NOT_EMPTY(m_members,ADEKF_RECURSIVE,m_members,ADEKF_MINUS_OUTPUT) << vector_part-__other.vector_part;return __result;\
+    Eigen::Matrix<ADEKF_MINUSRESULT(T,T2),DOF,1> __result; __result << ADEKF_IF_SEQ_NOT_EMPTY(m_members,ADEKF_RECURSIVE_COMMA,m_members,ADEKF_MINUS_OUTPUT) BOOST_PP_COMMA_IF(ADEKF_SEQ_NOT_EMPTY(m_members)) vector_part-__other.vector_part ;return __result;\
 }
 
 #define CALL_FUNCTION_ON_MEMBER(r,data,name)  BOOST_PP_TUPLE_ELEM(0,data) (name,BOOST_PP_TUPLE_ELEM(1,data)...);
