@@ -6,8 +6,8 @@ It is written as a C++ Header only Library. It runs on c++17
 This implementation uses the ceres Jet implementation and their rotation header in a modified version.
 http://ceres-solver.org/
 
-
-Please cite xxx
+ 
+Please cite us as: Lukas Post, Tom L. Koller "An Automatically Differentiating Extended Kalman Filter on Boxplus Manifolds", 2020 https://github.com/TomLKoller/ADEKF
 if you use this implementation in a published work.
 
 
