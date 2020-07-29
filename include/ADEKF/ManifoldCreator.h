@@ -23,29 +23,37 @@
 #define BOOST_PP_SEQ_ENUM_0
 #define ADEKF_TRANSFORM_COMMA(macro, entries) BOOST_PP_SEQ_ENUM(TRANSFORM_IF_NOT_EMPTY( ADEKF_APPLY_MACRO_ON_TUPLE, macro, entries))
 #define ADEKF_TRANSFORM_COMMA_UNCHECKED(macro,sequence) BOOST_PP_SEQ_ENUM(BOOST_PP_SEQ_TRANSFORM_S(1,ADEKF_APPLY_MACRO_ON_TUPLE,macro,sequence))
+#define ADEKF_TRANSFORM_UNCHECKED(macro,sequence) BOOST_PP_SEQ_FOR_EACH_R(1,ADEKF_APPLY_MACRO_ON_TUPLE,macro,sequence)
 
 #define ADEKF_TRANSFORM(macro, entries) FOR_EACH_IF_NOT_EMPTY(ADEKF_APPLY_MACRO_ON_TUPLE, macro, entries)
 
-
-
-#define ADEKF_RECURSIVE(seq, output_function) \
+#define ADEKF_GETGLOBAL(name)  decltype(name)::GLOBAL_SIZE
+#define ADEKF_RECURSIVE_(seq, output_function, step) \
 BOOST_PP_FOR_1( \
 		( \
 				BOOST_PP_SEQ_SIZE(seq), \
 				BOOST_PP_SEQ_HEAD(seq), \
 				BOOST_PP_SEQ_TAIL(seq) (~), \
 				0 ),\
-		ADEKF_RECURSIVE_PREDICATE, ADEKF_RECURSIVE_STEP, output_function)
+		ADEKF_RECURSIVE_PREDICATE, step, output_function)
 
 #define ADEKF_RECURSIVE_PREDICATE(r, state) BOOST_PP_TUPLE_ELEM(0,state)
 
 #define ADEKF_RECURSIVE_STEP(r, state) ADEKF_RECURSIVE_STEP_IMPL state
 #define ADEKF_RECURSIVE_STEP_IMPL(len, head, seq, dof) (BOOST_PP_DEC(len),BOOST_PP_SEQ_HEAD(seq),BOOST_PP_SEQ_TAIL(seq),dof + ADEKF_GETDOF(head))
 
+#define ADEKF_RECURSIVE_STEP_GLOB(r, state) ADEKF_RECURSIVE_STEP_GLOB_IMPL state
+#define ADEKF_RECURSIVE_STEP_GLOB_IMPL(len, head, seq, glob) (BOOST_PP_DEC(len),BOOST_PP_SEQ_HEAD(seq),BOOST_PP_SEQ_TAIL(seq),glob + ADEKF_GETGLOBAL(head))
+
+
 #define ADEKF_CONSTRUCTOR_ARGS_NO_DEFAULT(name)  const typename adekf::StateInfo<decltype(name)>::type & arg_##name
 
 
-#define ADEKF_RECURSIVE_COMMA(seq,output_function) BOOST_PP_SEQ_ENUM(ADEKF_RECURSIVE(seq,output_function))
+
+#define ADEKF_RECURSIVE(seq,output_function) ADEKF_RECURSIVE_(seq,output_function,ADEKF_RECURSIVE_STEP)
+
+#define ADEKF_RECURSIVE_COMMA_(seq,output_function,step) BOOST_PP_SEQ_ENUM(ADEKF_RECURSIVE_(seq,output_function,step))
+#define ADEKF_RECURSIVE_COMMA(seq,output_function) ADEKF_RECURSIVE_COMMA_(seq,output_function,ADEKF_RECURSIVE_STEP)
 
 /**
  * Struct to get default values differently for manifolds
@@ -72,6 +80,7 @@ struct defaultValue<Eigen::MatrixBase<DERIVED> >{
 #define ADEKF_DEFAULT_CONSTRUCTOR_SETTERS(name) name(defaultValue<typename adekf::StateInfo<decltype(name)>::type>::default_value)
 #define ADEKF_COPY_CONSTRUCTOR(name) name(other.name)
 #define ADEKF_ADD_DOF(name) + ADEKF_GETDOF(name)
+#define ADEKF_ADD_GLOBAL_SIZE(name) + ADEKF_GETGLOBAL(name)
 #define ADEKF_ASSIGN(name) name=other.name;
 #define ADEKF_ARG_NAME(name)  arg_##name
 #define ADEKF_STREAM_ASSIGN_VECTOR(v_members) vector_part << ADEKF_TRANSFORM_COMMA_UNCHECKED(ADEKF_ARG_NAME,v_members);
@@ -89,10 +98,19 @@ struct defaultValue<Eigen::MatrixBase<DERIVED> >{
 #define ADEKF_MAP_OUTPUT(r,state) ADEKF_MAP_OUTPUT_IMPL state
 #define ADEKF_MAP_OUTPUT_IMPL(len, head, seq, dof) , head(vector_part.template segment<ADEKF_GETDOF(head)>(dof))
 
+
+#define ADEKF_CERES_PLUS(r,state) ADEKF_CERES_PLUS_IMPL state
+#define ADEKF_CERES_PLUS_IMPL(len, head, seq, dof) result&=head(&x[glob],&delta[dof],&x_plus_delta[glob]); glob+=ADEKF_GETGLOBAL(head);
+#define ADEKF_FROM_POINTER(r,state) ADEKF_FROM_POINTER_IMPL state
+#define ADEKF_FROM_POINTER_IMPL(len, head, seq, glob) (decltype(head){&src[glob]})
+#define ADEKF_TO_POINTER(r,state) ADEKF_TO_POINTER_IMPL state
+#define ADEKF_TO_POINTER_IMPL(len, head, seq, glob) head.toPointer(&dest[glob]);
+
+
 ///////////////////////////////////////////////////////////
 
-#define ADEKF_CONSTRUCTOR(name, m_members,v_members) \
-name<T>():ADEKF_TRANSFORM_COMMA(ADEKF_DEFAULT_CONSTRUCTOR_SETTERS,m_members)  BOOST_PP_COMMA_IF(ADEKF_SEQ_NOT_EMPTY(m_members)) vector_part(vector_part.Zero()) ADEKF_IF_SEQ_NOT_EMPTY(v_members,ADEKF_RECURSIVE,v_members,ADEKF_MAP_OUTPUT) {}\
+#define ADEKF_CONSTRUCTOR(name, m_members, v_members) \
+explicit name<T>():ADEKF_TRANSFORM_COMMA(ADEKF_DEFAULT_CONSTRUCTOR_SETTERS,m_members)  BOOST_PP_COMMA_IF(ADEKF_SEQ_NOT_EMPTY(m_members)) vector_part(vector_part.Zero()) ADEKF_IF_SEQ_NOT_EMPTY(v_members,ADEKF_RECURSIVE,v_members,ADEKF_MAP_OUTPUT) {}\
 name<T>( \
     ADEKF_TRANSFORM_COMMA(ADEKF_CONSTRUCTOR_ARGS_NO_DEFAULT,m_members) BOOST_PP_COMMA_IF(BOOST_PP_BITAND(ADEKF_SEQ_NOT_EMPTY(m_members),ADEKF_SEQ_NOT_EMPTY(v_members))) ADEKF_TRANSFORM_COMMA(ADEKF_CONSTRUCTOR_ARGS_NO_DEFAULT,v_members) \
     ) : \
@@ -101,23 +119,22 @@ name<T>( \
 }\
 name<T>(const name<T> & other):ADEKF_TRANSFORM_COMMA(ADEKF_COPY_CONSTRUCTOR,m_members)BOOST_PP_COMMA_IF(ADEKF_SEQ_NOT_EMPTY(m_members)) vector_part(other.vector_part) ADEKF_IF_SEQ_NOT_EMPTY(v_members,ADEKF_RECURSIVE,v_members,ADEKF_MAP_OUTPUT){}
 
-#define ADEKF_VECTOR_CONSTRUCTOR(name, m_members,v_members)\
-name<T>( \
+#define ADEKF_VECTOR_CONSTRUCTOR(name, m_members, v_members)\
+explicit name<T>( \
     ADEKF_TRANSFORM_COMMA(ADEKF_CONSTRUCTOR_ARGS_NO_DEFAULT,m_members) BOOST_PP_COMMA_IF(ADEKF_SEQ_NOT_EMPTY(m_members)) const decltype(vector_part) & arg_vector_part \
     ) : \
     ADEKF_TRANSFORM_COMMA(ADEKF_CONSTRUCTOR_SETTERS,m_members)  BOOST_PP_COMMA_IF(ADEKF_SEQ_NOT_EMPTY(m_members)) vector_part(arg_vector_part) ADEKF_IF_SEQ_NOT_EMPTY(v_members,ADEKF_RECURSIVE,v_members,ADEKF_MAP_OUTPUT)  {}
 
 
-#define ADEKF_DEDUCTION_RESULT_IMPL(name,member) name<typename adekf::StateInfo<TYPE_##member>::ScalarType >
-#define ADEKF_DEDUCTION_RESULT(name,member) ADEKF_DEDUCTION_RESULT_IMPL(name,member)
+#define ADEKF_DEDUCTION_RESULT_IMPL(name, member) name<typename adekf::StateInfo<TYPE_##member>::ScalarType >
+#define ADEKF_DEDUCTION_RESULT(name, member) ADEKF_DEDUCTION_RESULT_IMPL(name,member)
 
 #define ADEKF_DEDUCTION_GUIDE(name, members) \
-		template< ADEKF_TRANSFORM_COMMA(ADEKF_TEMPLATE_TYPES,members) >\
-		name(ADEKF_TRANSFORM_COMMA(ADEKF_TEMPLATE_ARGS,members)) -> ADEKF_DEDUCTION_RESULT(name,BOOST_PP_SEQ_HEAD(members));
+        template< ADEKF_TRANSFORM_COMMA(ADEKF_TEMPLATE_TYPES,members) >\
+        name(ADEKF_TRANSFORM_COMMA(ADEKF_TEMPLATE_ARGS,members)) -> ADEKF_DEDUCTION_RESULT(name,BOOST_PP_SEQ_HEAD(members));
 
 
-
-#define ADEKF_ASSIGN_OP(name,m_members)\
+#define ADEKF_ASSIGN_OP(name, m_members)\
 void operator=(const name<T> & other){\
   ADEKF_TRANSFORM(ADEKF_ASSIGN,m_members)\
   vector_part=other.vector_part;\
@@ -138,16 +155,16 @@ EIGEN_STATIC_ASSERT_VECTOR_SPECIFIC_SIZE(Derived, DOF)\
 }
 
 
-#define ADEKF_BOXMINUS(name, m_members,v_members) \
+#define ADEKF_BOXMINUS(name, m_members, v_members) \
 template<typename T2> \
 Eigen::Matrix<ADEKF_MINUSRESULT(T,T2),DOF,1> operator-(const name<T2>& __other) const { \
     Eigen::Matrix<ADEKF_MINUSRESULT(T,T2),DOF,1> __result; __result << ADEKF_IF_SEQ_NOT_EMPTY(m_members,ADEKF_RECURSIVE_COMMA,m_members,ADEKF_MINUS_OUTPUT) BOOST_PP_COMMA_IF(ADEKF_SEQ_NOT_EMPTY(m_members)) vector_part-__other.vector_part ;return __result;\
 }
 
-#define CALL_FUNCTION_ON_MEMBER(r,data,name)  BOOST_PP_TUPLE_ELEM(0,data) (name,BOOST_PP_TUPLE_ELEM(1,data)...);
-#define CALL_FUNCTION_ON_MEMBER_WITH_OTHER(r,data,name)  BOOST_PP_TUPLE_ELEM(0,data) (name,BOOST_PP_TUPLE_ELEM(2,data). name,BOOST_PP_TUPLE_ELEM(1,data)...);
+#define CALL_FUNCTION_ON_MEMBER(r, data, name)  BOOST_PP_TUPLE_ELEM(0,data) (name,BOOST_PP_TUPLE_ELEM(1,data)...);
+#define CALL_FUNCTION_ON_MEMBER_WITH_OTHER(r, data, name)  BOOST_PP_TUPLE_ELEM(0,data) (name,BOOST_PP_TUPLE_ELEM(2,data). name,BOOST_PP_TUPLE_ELEM(1,data)...);
 
-#define ADEKF_FOREACH(name,m_members, function_name)  \
+#define ADEKF_FOREACH(name, m_members, function_name)  \
 template<typename FUNCTOR, typename ... ARGS>\
 void function_name(FUNCTOR & functor,  ARGS &&... args) const{\
     FOR_EACH_IF_NOT_EMPTY(CALL_FUNCTION_ON_MEMBER,(functor,args),m_members) \
@@ -156,7 +173,6 @@ template<typename FUNCTOR, typename OtherScalar, typename ... ARGS>\
 void function_name ##WithOther (FUNCTOR & functor,const name<OtherScalar> & other ,ARGS && ... args) const {\
 FOR_EACH_IF_NOT_EMPTY(CALL_FUNCTION_ON_MEMBER_WITH_OTHER,(functor,args,other),m_members)\
 }
-
 
 
 #define ADEKF_OUTSTREAM(name, m_members) \
@@ -168,6 +184,32 @@ friend std::ostream& operator<<(std::ostream& __stream, const name& __state) { \
 friend std::istream& operator>>(std::istream& __stream, name& __state) { \
     return __stream ADEKF_TRANSFORM(ADEKF_INSTREAM_IMPL,members); \
 }
+//Compatibility with ceres optimizers
+#ifdef MANIFOLD_WITH_CERES
+#include <ceres/local_parameterization.h>
+#include <ceres/autodiff_local_parameterization.h>
+#define CERES_ADAPTER(name, m_members)\
+static constexpr unsigned MAN_GLOBAL_SIZE=0 ADEKF_TRANSFORM_UNCHECKED(ADEKF_ADD_GLOBAL_SIZE,m_members);\
+static constexpr unsigned GLOBAL_SIZE=MAN_GLOBAL_SIZE+VEC_DOF;\
+template<typename TYPE>\
+bool operator()(const TYPE* x,const TYPE* delta,TYPE* x_plus_delta) const {\
+    size_t glob=0;\
+    bool result=true;\
+    ADEKF_RECURSIVE(m_members,ADEKF_CERES_PLUS)\
+    return result;\
+}\
+static ceres::LocalParameterization * getLocalParameterization(){ \
+    return new ceres::ProductParameterization{new ceres::AutoDiffLocalParameterization<name,MAN_GLOBAL_SIZE,MAN_DOF>{}, new ceres::IdentityParameterization{VEC_DOF}};\
+}\
+explicit name<T>(const T* const src): name{ADEKF_RECURSIVE_COMMA_(m_members,ADEKF_FROM_POINTER,ADEKF_RECURSIVE_STEP_GLOB) BOOST_PP_COMMA_IF(ADEKF_SEQ_NOT_EMPTY(m_members))  Eigen::Map<const Eigen::Matrix<T,VEC_DOF,1>>(&src[MAN_GLOBAL_SIZE])}{}\
+void toPointer(T* dest){\
+  ADEKF_RECURSIVE_(m_members,ADEKF_TO_POINTER,ADEKF_RECURSIVE_STEP_GLOB)  \
+  (Eigen::Map<Eigen::Matrix<T,VEC_DOF,1>>(&dest[MAN_GLOBAL_SIZE]))=vector_part;\
+}
+#else
+#define CERES_ADAPTER(name, m_members)
+#endif
+
 
 ////////////////////////////////////////////////////////////////////////
 
@@ -184,6 +226,7 @@ ADEKF_FOREACH(name,m_members v_members, forEach)\
 ADEKF_FOREACH(name,m_members, forEachManifold)\
 ADEKF_FOREACH(name,v_members, forEachVector)\
 ADEKF_OUTSTREAM(name, m_members) \
+ADEKF_IF_SEQ_NOT_EMPTY(m_members,CERES_ADAPTER,name,m_members) \
 EIGEN_MAKE_ALIGNED_OPERATOR_NEW\
 };\
 	ADEKF_DEDUCTION_GUIDE(name,m_members v_members)
@@ -225,8 +268,8 @@ struct MatrixBlockWrapper{
     /**   \
     * Contains all vector data of this CompoundManifold  \
     */\
-    Eigen::Matrix<T,VEC_DOF,1> vector_part; \
     ADEKF_UNZIP_ATTRIBUTES(CREATE_ATTRIBUTE,manifolds)             \
+    Eigen::Matrix<T,VEC_DOF,1> vector_part; \
     ADEKF_UNZIP_ATTRIBUTES(CREATE_VECTOR_ATTRIBUTE,vectors)    \
 	ADEKF_CONSTRUCT_MANIFOLD_INTERNAL(name,   ADEKF_UNZIP_ATTRIBUTES(RETURN_NAME,manifolds) , ADEKF_UNZIP_ATTRIBUTES(RETURN_NAME,vectors)) 																	\
 

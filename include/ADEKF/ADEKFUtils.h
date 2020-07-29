@@ -63,6 +63,11 @@ namespace adekf {
     struct StateInfo<T, true> {
         using ScalarType = typename T::ScalarType;
         static constexpr int DOF = T::DOF;
+#ifdef MANIFOLD_WITH_CERES
+static constexpr int GLOBAL_SIZE=T::GLOBAL_SIZE;
+#else
+        static constexpr int GLOBAL_SIZE=-1;
+#endif
         using type=T;
     };
 
@@ -74,6 +79,7 @@ namespace adekf {
     struct StateInfo<DERIVED, false> {
         using ScalarType=typename Eigen::internal::traits<typename DERIVED::PlainObject>::Scalar;
         static constexpr int DOF = Eigen::internal::traits<typename DERIVED::PlainObject>::RowsAtCompileTime;
+        static constexpr int GLOBAL_SIZE=DOF;
         using type=Eigen::Matrix<typename DERIVED::Scalar, DERIVED::RowsAtCompileTime, DERIVED::ColsAtCompileTime>;
     };
 
@@ -87,6 +93,7 @@ namespace adekf {
     struct StateInfo<float, s> {
         using ScalarType=float;
         static constexpr int DOF = 1;
+        static constexpr int GLOBAL_SIZE=DOF;
         using type=float;
     };
 
@@ -98,6 +105,7 @@ namespace adekf {
     struct StateInfo<double, false> {
         using ScalarType=double;
         static constexpr int DOF = 1;
+        static constexpr int GLOBAL_SIZE=DOF;
         using type=double;
     };
 
@@ -111,6 +119,13 @@ namespace adekf {
     static constexpr int DOFOf = StateInfo<typename std::remove_reference<T>::type>::DOF;
 
     /**
+     * Retreives the Global Size of a Manifold or Vector class
+     * @tparam T The class to be used
+     */
+    template<typename T>
+    static constexpr int GlobalOf = StateInfo<typename std::remove_reference<T>::type>::GLOBAL_SIZE;
+
+    /**
      * Retrieves the scalar type of a state
      * @param state the variable to derive the scalar type from
      */
@@ -120,6 +135,10 @@ namespace adekf {
  * Macro to read DOF from parameter name, can be used to read DOF of auto parameters
  */
 #define ADEKF_GETDOF(name) adekf::DOFOf<decltype(name)>
+/*
+ * Macro to read Global Size from parameter name, can be used to read Global of auto parameters
+ */
+#define ADEKF_GETGLOBAL(name) adekf::GlobalOf<decltype(name)>
 
     /**
      * A Matrix with the Scalar Type of the State

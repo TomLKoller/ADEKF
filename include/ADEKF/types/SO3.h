@@ -31,6 +31,7 @@ namespace adekf {
         Index rows() const { return 3; }
         Index cols() const { return 1; }
         RESULT_TYPE result;
+        EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     };
 
 
@@ -40,6 +41,7 @@ class SO3: public Manifold, public Eigen::Quaternion<Scalar> {
 public:
 	using ScalarType = Scalar;
 	static constexpr unsigned DOF = 3;
+	static constexpr unsigned GLOBAL_SIZE=4;
 
 	SO3(const Scalar &w, const Scalar &x, const Scalar &y, const Scalar &z) :
 			Eigen::Quaternion<Scalar>(w, x, y, z) {
@@ -52,7 +54,7 @@ public:
 
     SO3(const Eigen::Matrix<Scalar, DOF, DOF>  &rotationMatrix) :
             Eigen::Quaternion<Scalar>(rotationMatrix) {};
-
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 	template<typename Derived>
 	SO3(const Eigen::MatrixBase<Derived> & omega){
         Scalar expData[4];
@@ -67,17 +69,15 @@ public:
 	 */
     template<typename OtherScalar>
 	SO3(const SO3<OtherScalar> & other):Eigen::Quaternion<Scalar>(other){
+
 	}
 
-    SO3(Scalar * src): Eigen::Quaternion<Scalar>(src){
-
-    }
     SO3(const Scalar * src): Eigen::Quaternion<Scalar>(src){
 
     }
 
     void toPointer(Scalar *dest){
-        (Eigen::Map<Eigen::Quaternion<Scalar> >(dest))=*this;
+        (Eigen::Map<Eigen::Matrix<Scalar,4,1> >(dest))=this->coeffs();
     }
 
 
@@ -109,6 +109,16 @@ public:
 	auto operator+(const Eigen::MatrixBase<Derived> &delta) const {
         return SO3<OtherScalar>(delta)* *this;
 	}
+
+    /**
+     * Operator for ceres local parameterization
+     */
+    template<typename T>
+    bool operator()(const T* x,const T* delta,T* x_plus_delta) const {
+        (SO3<T>(x)+Eigen::Map<const Eigen::Matrix<T,DOF,1>>(delta)).toPointer(x_plus_delta);
+        return true;
+    }
+
 
 	template<typename OtherScalar>
 	auto operator-(const SO3<OtherScalar> &other) const {
