@@ -253,8 +253,8 @@ The general structure of a functor looks like :
 
 struct measurement_model{
     template<typename T>
-    MEASUREMENT_TYPE operator()(STATE_TYPE<T> state, ParameterPack ... params){
-        return= ... //Implement measurement model
+    MEASUREMENT_TYPE operator()(const STATE_TYPE<T> &state, ParameterPack ... params){
+        return ... //Implement measurement model
     }
 };
 ```
@@ -266,7 +266,7 @@ For example if you want a measurement model which where you measure the actual p
 ```c++
 struct measurement_model{
     template<typename T>
-    Eigen::Matrix<T,3,1> operator()(Eigen::Matrix<T,3,1>  state){
+    Eigen::Matrix<T,3,1> operator()(const Eigen::Matrix<T,3,1> & state){
         return state*1000.;
     }
 };
