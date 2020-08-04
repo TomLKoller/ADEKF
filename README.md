@@ -347,42 +347,6 @@ auto dynamic_model=[](auto & state, Eigen::Vector3d velocity, double time_diff){
     auto state_copy=(state+velocity*time_diff).eval();
     state=state_copy;
 };
-```
-This problem definetly appears at the use of SO3: 
-
-So instead of
-```c++
-auto dynamic_model=[](auto & state, Eigen::Vector3d velocity, double time_diff){
-    auto state_copy=state+state.orientation*velocity*time_diff;
-    state=state_copy;
-};
-```
-use .eval():
-```c++
-auto dynamic_model=[](auto & state, Eigen::Vector3d velocity, double time_diff){
-    auto state_copy=(state+state.orientation*velocity*time_diff).eval();
-    state=state_copy;
-};
-```
-
-
-Since lambdas automatically deduce their return type, the same problem occurs at the return statement.
-
-
-This call will fail :
-```c++
-auto measurement_model=[](auto & state, Eigen::Vector3d velocity, double time_diff){
-    return state+state.orientation*velocity*time_diff;
-};
-```
-
-Whereas this works:
-
-```c++
-auto measurement_model=[](auto & state, Eigen::Vector3d velocity, double time_diff){
-    return (state+state.orientation*velocity*time_diff).eval();
-};
-```
 
 
 
