@@ -27,7 +27,7 @@
 
 #define ADEKF_TRANSFORM(macro, entries) FOR_EACH_IF_NOT_EMPTY(ADEKF_APPLY_MACRO_ON_TUPLE, macro, entries)
 
-#define ADEKF_GETGLOBAL(name)  decltype(name)::GLOBAL_SIZE
+#define MANCREATOR_GETGLOBAL(name)  decltype(name)::GLOBAL_SIZE
 #define ADEKF_RECURSIVE_(seq, output_function, step) \
 BOOST_PP_FOR_1( \
 		( \
@@ -43,7 +43,7 @@ BOOST_PP_FOR_1( \
 #define ADEKF_RECURSIVE_STEP_IMPL(len, head, seq, dof) (BOOST_PP_DEC(len),BOOST_PP_SEQ_HEAD(seq),BOOST_PP_SEQ_TAIL(seq),dof + ADEKF_GETDOF(head))
 
 #define ADEKF_RECURSIVE_STEP_GLOB(r, state) ADEKF_RECURSIVE_STEP_GLOB_IMPL state
-#define ADEKF_RECURSIVE_STEP_GLOB_IMPL(len, head, seq, glob) (BOOST_PP_DEC(len),BOOST_PP_SEQ_HEAD(seq),BOOST_PP_SEQ_TAIL(seq),glob + ADEKF_GETGLOBAL(head))
+#define ADEKF_RECURSIVE_STEP_GLOB_IMPL(len, head, seq, glob) (BOOST_PP_DEC(len),BOOST_PP_SEQ_HEAD(seq),BOOST_PP_SEQ_TAIL(seq),glob + MANCREATOR_GETGLOBAL(head))
 
 
 #define ADEKF_CONSTRUCTOR_ARGS_NO_DEFAULT(name)  const typename adekf::StateInfo<decltype(name)>::type & arg_##name
