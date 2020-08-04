@@ -347,7 +347,7 @@ auto dynamic_model=[](auto & state, Eigen::Vector3d velocity, double time_diff){
     auto state_copy=(state+velocity*time_diff).eval();
     state=state_copy;
 };
-
+```
 
 
 
