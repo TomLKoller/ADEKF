@@ -66,7 +66,7 @@ namespace adekf {
 #ifdef MANIFOLD_WITH_CERES
 static constexpr int GLOBAL_SIZE=T::GLOBAL_SIZE;
 #else
-        static constexpr int GLOBAL_SIZE=-1;
+        static constexpr int GLOBAL_SIZE=T::GlobalSize;
 #endif
         using type=T;
     };
