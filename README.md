@@ -253,8 +253,8 @@ The general structure of a functor looks like :
 
 struct measurement_model{
     template<typename T>
-    MEASUREMENT_TYPE operator()(STATE_TYPE<T> state, ParameterPack ... params){
-        return= ... //Implement measurement model
+    MEASUREMENT_TYPE operator()(const STATE_TYPE<T> &state, ParameterPack ... params){
+        return ... //Implement measurement model
     }
 };
 ```
@@ -266,7 +266,7 @@ For example if you want a measurement model which where you measure the actual p
 ```c++
 struct measurement_model{
     template<typename T>
-    Eigen::Matrix<T,3,1> operator()(Eigen::Matrix<T,3,1>  state){
+    Eigen::Matrix<T,3,1> operator()(const Eigen::Matrix<T,3,1> & state){
         return state*1000.;
     }
 };
@@ -348,42 +348,6 @@ auto dynamic_model=[](auto & state, Eigen::Vector3d velocity, double time_diff){
     state=state_copy;
 };
 ```
-This problem definetly appears at the use of SO3: 
-
-So instead of
-```c++
-auto dynamic_model=[](auto & state, Eigen::Vector3d velocity, double time_diff){
-    auto state_copy=state+state.orientation*velocity*time_diff;
-    state=state_copy;
-};
-```
-use .eval():
-```c++
-auto dynamic_model=[](auto & state, Eigen::Vector3d velocity, double time_diff){
-    auto state_copy=(state+state.orientation*velocity*time_diff).eval();
-    state=state_copy;
-};
-```
-
-
-Since lambdas automatically deduce their return type, the same problem occurs at the return statement.
-
-
-This call will fail :
-```c++
-auto measurement_model=[](auto & state, Eigen::Vector3d velocity, double time_diff){
-    return state+state.orientation*velocity*time_diff;
-};
-```
-
-Whereas this works:
-
-```c++
-auto measurement_model=[](auto & state, Eigen::Vector3d velocity, double time_diff){
-    return (state+state.orientation*velocity*time_diff).eval();
-};
-```
-
 
 
 
