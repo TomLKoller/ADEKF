@@ -49,7 +49,7 @@ To use this software you should know how to:
 We will not show the above explicitly in our tutorials. 
 
 
-In the following we will describe the general usage of the ADKEF. For executable code with a sensefull meaning see our tutorials.
+In the following we will describe the general usage of the ADEKF. For executable code with a sensefull meaning see our tutorials.
 
 # Usage 
 To use the ADEKF you need:
