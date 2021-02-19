@@ -262,7 +262,7 @@ namespace adekf {
             //Calculate the updated state estimate
             auto delta=eval(z-hx);
             //std::cout << delta << std::endl;
-            log_likelihood= -0.5 * transpose(delta) * S.inverse() * delta+log(1/sqrt(S.determinant() * pow((2 * M_PI), S.rows())));
+            log_likelihood= -0.5 * (transpose(delta) * S.inverse() * delta)(0)+log(1/sqrt(S.determinant() * pow((2 * M_PI), S.rows())));
             //Calcualte the updated covariance estimate
             add_diff(mu, K * delta, K * H);
 
@@ -554,11 +554,14 @@ namespace adekf {
                           MatrixBase<Derived> &H) {
             //The real component of the dual numbers are the result of the measurement model
             //The dual component vectors represent the rows of the jacobian matrix
-            for (int i = 0; i < MDOF; ++i) {
-                H.row(i) = input[i].v;
-                modelResult[i] = input[i].a;
+                for (int i = 0; i < MDOF; ++i) {
+                    H.row(i) = input[i].v;
+                    modelResult[i] = input[i].a;
+                }
             }
-        }
+
+
+
 
         /** update implementation for scalar measurements
         * @tparam ModelReturn The Type of the Addition between a Measurement and a dual component
@@ -569,8 +572,8 @@ namespace adekf {
         * @param h The Measurement Model h(x)
         * @param H The resulting Jacobian. Calculated with dual numbers
         */
-        template<typename ModelReturn, typename MeasurementModel, typename Derived>
-        void update_impl_(const ScalarType &, ScalarType &modelResult, ModelReturn &input, MeasurementModel,
+        template<typename MeasurementModel, typename Derived>
+        void update_impl_(const ScalarType &, ScalarType &modelResult, const ceres::Jet<ScalarType,DOF> &input, MeasurementModel,
                           MatrixBase<Derived> &H) {
             //The real component of the dual numbers are the result of the measurement model
             //The dual component vectors represent the rows of the jacobian matrix

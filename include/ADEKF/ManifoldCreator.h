@@ -229,7 +229,8 @@ ADEKF_OUTSTREAM(name, m_members) \
 ADEKF_IF_SEQ_NOT_EMPTY(m_members,CERES_ADAPTER,name,m_members) \
 EIGEN_MAKE_ALIGNED_OPERATOR_NEW\
 };\
-	ADEKF_DEDUCTION_GUIDE(name,m_members v_members)
+	ADEKF_DEDUCTION_GUIDE(name,m_members v_members)\
+	typedef adekf::CovarianceOf<name<double>> name ##Cov;
 
 //ADEKF_INSTREAM(name, m_members, v_members) \
 
