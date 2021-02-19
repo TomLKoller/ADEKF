@@ -2,8 +2,8 @@
 // Created by tomlucas on 04.06.20.
 //
 
-#ifndef CYLINDEREXAMPLE_SI_UNITS_H
-#define CYLINDEREXAMPLE_SI_UNITS_H
+#ifndef SI_UNITS_H
+#define SI_UNITS_H
 
 
 //time units base is seconds
@@ -40,4 +40,4 @@
 #define _km *unit_km
 #define _p_km /unit_km
 
-#endif //CYLINDEREXAMPLE_SI_UNITS_H
+#endif //SI_UNITS_H
