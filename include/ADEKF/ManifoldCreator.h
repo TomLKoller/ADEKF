@@ -150,15 +150,15 @@ void operator=(const name<T> && other){\
 #define ADEKF_BOXPLUS(name, m_members, v_members) \
 template<typename Derived> \
 name<ADEKF_PLUSRESULT(T,typename Derived::Scalar)> operator+(const Eigen::MatrixBase<Derived>& __delta) const { \
-EIGEN_STATIC_ASSERT_VECTOR_SPECIFIC_SIZE(Derived, DOF)\
+EIGEN_STATIC_ASSERT_SAME_VECTOR_SIZE(Derived, DeltaType<T>)\
      return name<ADEKF_PLUSRESULT(T,typename Derived::Scalar)>{ADEKF_IF_SEQ_NOT_EMPTY(m_members,ADEKF_RECURSIVE_COMMA,m_members,ADEKF_PLUS_OUTPUT) ADEKF_IF_SEQ_NOT_EMPTY(v_members,VECTOR_PART_BOXPLUS,m_members) }; \
 }
 
 
 #define ADEKF_BOXMINUS(name, m_members, v_members) \
 template<typename T2> \
-Eigen::Matrix<ADEKF_MINUSRESULT(T,T2),DOF,1> operator-(const name<T2>& __other) const { \
-    Eigen::Matrix<ADEKF_MINUSRESULT(T,T2),DOF,1> __result; __result << ADEKF_IF_SEQ_NOT_EMPTY(m_members,ADEKF_RECURSIVE_COMMA,m_members,ADEKF_MINUS_OUTPUT) BOOST_PP_COMMA_IF(ADEKF_SEQ_NOT_EMPTY(m_members)) vector_part-__other.vector_part ;return __result;\
+DeltaType<ADEKF_MINUSRESULT(T,T2)> operator-(const name<T2>& __other) const { \
+    DeltaType<ADEKF_MINUSRESULT(T,T2)> __result; __result << ADEKF_IF_SEQ_NOT_EMPTY(m_members,ADEKF_RECURSIVE_COMMA,m_members,ADEKF_MINUS_OUTPUT) BOOST_PP_COMMA_IF(ADEKF_SEQ_NOT_EMPTY(m_members)) vector_part-__other.vector_part ;return __result;\
 }
 
 #define CALL_FUNCTION_ON_MEMBER(r, data, name)  BOOST_PP_TUPLE_ELEM(0,data) (name,BOOST_PP_TUPLE_ELEM(1,data)...);
@@ -219,6 +219,8 @@ BOOST_PP_REMOVE_PARENS(BOOST_PP_EXPR_IF(BOOST_PP_GREATER(BOOST_PP_SEQ_SIZE(v_mem
 using ScalarType = T; \
 static constexpr unsigned MAN_DOF=0 ADEKF_TRANSFORM(ADEKF_ADD_DOF,m_members);\
 static constexpr unsigned DOF = VEC_DOF +MAN_DOF; \
+template<typename DT>\
+using DeltaType=Eigen::Matrix<DT,DOF,1>;\
 ADEKF_BOXPLUS(name, m_members, v_members) \
 ADEKF_BOXMINUS(name, m_members, v_members) \
 ADEKF_ASSIGN_OP(name,m_members)\

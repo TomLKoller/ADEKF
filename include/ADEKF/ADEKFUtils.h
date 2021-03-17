@@ -289,6 +289,22 @@ static constexpr int GLOBAL_SIZE=T::GLOBAL_SIZE;
         assert_finite(args ...);
     }
 
+//Vector type to support optimiziation on Eigen and State Types on std::vector (usual std::vector breaks)
+template<class AlignedClass>
+using aligned_vector=std::vector<AlignedClass,Eigen::aligned_allocator<AlignedClass>>;
 
+
+}
+
+
+/**
+ *Checks whether  a matrix is positive definite (usefull for covariance)
+*
+* Computationally expensive since it uses ldlt decomposition
+ */
+template<class Derived>
+bool isPositiveDefinite(const Eigen::MatrixBase<Derived> & matrix){
+    auto _ldlt=matrix.ldlt();
+    return _ldlt.info() ==Eigen::Success && _ldlt.isPositive();
 }
 

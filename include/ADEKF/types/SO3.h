@@ -105,9 +105,9 @@ public:
 	}
 
 
-	template<typename Derived, typename OtherScalar = typename Derived::Scalar>
-	auto operator+(const Eigen::MatrixBase<Derived> &delta) const {
-        return SO3<OtherScalar>(delta)* *this;
+	template<typename Derived, typename OtherScalar = typename Derived::Scalar, typename ResultScalar=ADEKF_PLUSRESULT(Scalar, OtherScalar)>
+	SO3<ResultScalar> operator+(const Eigen::MatrixBase<Derived> &delta) const {
+        return *this * SO3<OtherScalar>(delta);
 	}
 
     /**
@@ -122,7 +122,7 @@ public:
 
 	template<typename OtherScalar>
 	auto operator-(const SO3<OtherScalar> &other) const {
-		adekf::SO3 delta(*this *other.conjugate());
+		adekf::SO3 delta(other.conjugate() * *this);
 		using ResultScalar=typename decltype(delta)::ScalarType;
 		Eigen::Matrix<ResultScalar, DOF, 1> result;
 		ResultScalar deltaData[4] = { delta.coeffs().data()[3], delta.coeffs().data()[0], delta.coeffs().data()[1],
