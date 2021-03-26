@@ -24,7 +24,7 @@ namespace adekf {
          * The DOF of the State
          */
         static constexpr int DOF = DOFOf<State>;
-
+        protected:
         /**
          * The Type of the Scalars used in the State
          */
@@ -45,9 +45,6 @@ namespace adekf {
         template<int N>
         using SquareMatrixType = MatrixType<N, N>;
 
-
-        template<int N, int M>
-        static constexpr bool dynamicMatrix = N * M > USE_EIGEN_DYNAMIC_THRESHHOLD;
 
 
 

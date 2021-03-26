@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Eigen/Core>
+#include <Eigen/Eigenvalues>
 #include "ceres/jet.h"
 namespace adekf {
 
@@ -140,28 +141,41 @@ static constexpr int GLOBAL_SIZE=T::GLOBAL_SIZE;
  */
 #define ADEKF_GETGLOBAL(name) adekf::GlobalOf<decltype(name)>
 
-    /**
-     * A Matrix with the Scalar Type of the State
-     * @tparam N Number of Rows
-     * @tparam M Number of Columns
-     */
-    template<typename ScalarType, int N, int M>
-    using MatrixType = Eigen::Matrix<ScalarType, N, M>;
+   
 
+        template<int N, int M>
+        static constexpr bool dynamicMatrix = N * M > USE_EIGEN_DYNAMIC_THRESHHOLD;
 
-    /**
-     * A Square Matrix with the Scalar Type of the State
-     * @tparam N Number of Rows and Columns
-     */
-    template<typename ScalarType, int N>
-    using SquareMatrixType = MatrixType<ScalarType, N, N>;
+       
+          /**
+         * A Matrix type (It is the Eigen::Matrix)
+         * @tparam N Number of Rows
+         * @tparam M Number of Columns
+         */
+        template<typename ScalarType,int N, int M>
+        using MatrixType = Eigen::Matrix<ScalarType, N, M>;
+          /**
+         * An Eigen Matrix which chooses automatically when it is usefull to use dynamic allocation
+         * @tparam N Number of Rows
+         * @tparam M Number of Columns
+         */
+        template<typename ScalarType,int N, int M>
+        using AutoMatrixType = typename std::conditional<dynamicMatrix<N, M>, Eigen::Matrix<double,-1, -1>,Eigen::Matrix<double,N, N> >::type;
+
+        /**
+         * A Square Matrix with the Scalar Type of the State
+         * @tparam N Number of Rows and Columns
+         */
+        template<typename ScalarType, int N>
+        using SquareMatrixType = MatrixType<ScalarType,N, N>;
+
 
     /**
      * Covariance Matrix of a Manifold or Vector class
      * @tparam The class to be used
      */
     template<typename T>
-    using CovarianceOf = SquareMatrixType<typename StateInfo<T>::ScalarType, DOFOf<T>>;
+    using CovarianceOf = SquareMatrixType<T,DOFOf<T>>;
 
     /**
      * A Helper Function to bypass Eigen Expression Templates
@@ -294,7 +308,6 @@ template<class AlignedClass>
 using aligned_vector=std::vector<AlignedClass,Eigen::aligned_allocator<AlignedClass>>;
 
 
-}
 
 
 /**
@@ -308,3 +321,39 @@ bool isPositiveDefinite(const Eigen::MatrixBase<Derived> & matrix){
     return _ldlt.info() ==Eigen::Success && _ldlt.isPositive();
 }
 
+/**
+ * Checks whether a matrix is positive definit. If not Tikhonov regularization is applied.
+ */
+template<class Derived>
+void assurePositiveDefinite(Eigen::MatrixBase<Derived> & matrix, double eps=1e-10){
+    Eigen::SelfAdjointEigenSolver<Derived> svd{matrix};
+    Eigen::VectorXd sV=svd.eigenvalues();
+    bool positive=true;
+    for(int i=0; i < sV.rows();i++){
+        if (sV(i)<eps){
+            sV(i)=eps;
+            positive=false;
+        }
+    }
+    
+    if(positive)
+        return;
+    else{ 
+        matrix=svd.eigenvectors()*sV.asDiagonal()*svd.eigenvectors().inverse();
+        assert(isPositiveDefinite(matrix));
+    }
+}
+
+    template <typename ScalarType, int _LDOF, int _RDOF>
+        MatrixType<ScalarType,_LDOF,_RDOF> extractJacobi(const Eigen::Matrix<ceres::Jet<ScalarType,_RDOF>,_LDOF,1> &result)
+        {
+            MatrixType<ScalarType,_LDOF,_RDOF> jacobi(_LDOF,_RDOF);
+            for (size_t j = 0; j < _LDOF; ++j)
+            {
+                jacobi.row(j) = result(j).v;
+            }
+            return jacobi;
+        }
+
+
+}

@@ -173,7 +173,6 @@ namespace ceres {
     template<typename T, int N>
     struct Jet {
         static constexpr bool dynamic = N * N > USE_EIGEN_DYNAMIC_THRESHHOLD;
-
         enum {
             DIMENSION = N
         };
