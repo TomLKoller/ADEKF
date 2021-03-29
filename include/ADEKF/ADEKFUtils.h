@@ -311,9 +311,13 @@ using aligned_vector=std::vector<AlignedClass,Eigen::aligned_allocator<AlignedCl
 
 
 /**
- *Checks whether  a matrix is positive definite (usefull for covariance)
-*
-* Computationally expensive since it uses ldlt decomposition
+ * Checks whether  a matrix is positive definite (usefull for covariance)
+ * 
+ * Computationally expensive since it uses ldlt decomposition
+ * @tparam Derived type of the Matrix
+ * @param Matrix to Matrix to check
+ * 
+ * @return true if matrix is positive definite
  */
 template<class Derived>
 bool isPositiveDefinite(const Eigen::MatrixBase<Derived> & matrix){
@@ -322,7 +326,14 @@ bool isPositiveDefinite(const Eigen::MatrixBase<Derived> & matrix){
 }
 
 /**
- * Checks whether a matrix is positive definit. If not Tikhonov regularization is applied.
+ * Sets all eigenvalues to the minimum value eps.
+ * 
+ * Computationally expensive since it uses eigen decomposition
+ * 
+ * @tparam Derived type of the Matrix
+ * @param matrix to regularize, inplace operation
+ * @param eps the minimum value of the eigen values
+ * 
  */
 template<class Derived>
 void assurePositiveDefinite(Eigen::MatrixBase<Derived> & matrix, double eps=1e-10){
@@ -343,7 +354,15 @@ void assurePositiveDefinite(Eigen::MatrixBase<Derived> & matrix, double eps=1e-1
         assert(isPositiveDefinite(matrix));
     }
 }
-
+/**
+ * @brief Extracts a Jacobian from the given vector with jets.
+ * 
+ * @tparam ScalarType The Scalartype of the Jet
+ * @tparam _LDOF The number of Rows
+ * @tparam _RDOF The number of Cols
+ * @param result The vector to extract the Jacobi from. Has to be the result of automatic Differentiation with jets
+ * @return MatrixType<ScalarType,_LDOF,_RDOF> The extracted Jacobian. 
+ */
     template <typename ScalarType, int _LDOF, int _RDOF>
         MatrixType<ScalarType,_LDOF,_RDOF> extractJacobi(const Eigen::Matrix<ceres::Jet<ScalarType,_RDOF>,_LDOF,1> &result)
         {

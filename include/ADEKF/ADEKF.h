@@ -590,7 +590,7 @@ namespace adekf {
             //Add the Difference on the Estimated State
             State newMu = mu + diff;
             //Calculate the Jacobian of the Boxplus Function
-            auto plus_diff = eval(((mu + getDerivator<DOF>()) + diff) - newMu);
+            auto plus_diff = eval(mu + (getDerivator<DOF>() + diff) - newMu);
             //Definition of the Jacobian of the Boxplus Function
             JacobianOf<State> D(DOF, DOF);
             //Initialise the Jacobian
@@ -631,7 +631,7 @@ namespace adekf {
                 int constexpr curDOF = DOFOf<decltype(manifold)>;
                 //Calculate the Jacobian of the Boxplus Function
                 auto plus_diff = eval(
-                        ((manifold + getDerivator<curDOF>()) + diff.template segment<curDOF>(dof) - manifold));
+                        (manifold  + (diff.template segment<curDOF>(dof)+ getDerivator<curDOF>()) - manifold));
                 for (int i = 0; i < curDOF; ++i) {
                     D.template block<1, curDOF>(dof + i, dof) = plus_diff[i].v;
                 }
@@ -675,7 +675,7 @@ namespace adekf {
                 int constexpr curDOF = DOFOf<decltype(manifold)>;
                 //Calculate the Jacobian of the Boxplus Function
                 auto plus_diff = eval(
-                        ((manifold + getDerivator<curDOF>()) + diff.template segment<curDOF>(dof) - manifold));
+                        (manifold  + (diff.template segment<curDOF>(dof)+ getDerivator<curDOF>()) - manifold));
                 for (int i = 0; i < curDOF; ++i) {
                     D.template block<1, curDOF>(dof + i, dof) = plus_diff[i].v;
                 }
