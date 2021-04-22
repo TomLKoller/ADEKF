@@ -420,10 +420,7 @@ namespace adekf {
             //Set the new state estimate
             f(mu);
             //The difference of a differentiated manifold with it's identity results in the jacobian
-            auto result = input - mu;
-            //The dual component vectors represent the rows of the jacobian matrix
-            for (int i = 0; i < DOF; ++i)
-                F.row(i) = result[i].v;
+            F=extractJacobi(input-mu);
         }
 
 
@@ -527,10 +524,7 @@ namespace adekf {
             //Set the observation to the result of the measurement model
             modelResult = h(mu);
             //calculate the Jacobian
-            auto result = input - modelResult;
-            for (int i = 0; i < DOFOf<Measurement>; ++i) {
-                H.row(i) = result(i).v;
-            }
+            H=extractJacobi(input - modelResult);
 
         }
 
@@ -590,12 +584,7 @@ namespace adekf {
             //Add the Difference on the Estimated State
             State newMu = mu + diff;
             //Calculate the Jacobian of the Boxplus Function
-            auto plus_diff = eval(mu + (getDerivator<DOF>() + diff) - newMu);
-            //Definition of the Jacobian of the Boxplus Function
-            JacobianOf<State> D(DOF, DOF);
-            //Initialise the Jacobian
-            for (int i = 0; i < DOF; ++i)
-                D.row(i) = plus_diff[i].v;
+            JacobianOf<State> D=transformReferenceJacobian(mu,newMu,diff);
             //Set the new Estimated Value
             mu = newMu;
             //Calculate the new Covariance Matrix
@@ -622,25 +611,8 @@ namespace adekf {
 
             //Add the Difference on the Estimated State
             State newMu = mu + diff;
-            //Definition of the Jacobian of the Boxplus Function
-            JacobianOf<State> D = D.Identity(DOF, DOF);
-            //Counter for the current dof at iterating
-            int dof = 0;
-            //calculate the part of the Jacobian which belongs to the Manifold
-            auto calcManifoldJacobian = [&](auto &manifold) {
-                int constexpr curDOF = DOFOf<decltype(manifold)>;
-                //Calculate the Jacobian of the Boxplus Function
-                auto plus_diff = eval(
-                        (manifold  + (diff.template segment<curDOF>(dof)+ getDerivator<curDOF>()) - manifold));
-                for (int i = 0; i < curDOF; ++i) {
-                    D.template block<1, curDOF>(dof + i, dof) = plus_diff[i].v;
-                }
-
-                dof += curDOF;
-            };
-            //apply on each manifold, for vectors the Jacobian is the Identity
-            mu.forEachManifold(calcManifoldJacobian);
-
+            //Calculate  the Jacobian of the Boxplus Function
+            JacobianOf<State> D = transformReferenceJacobian(mu,newMu,diff);
             //Set the new Estimated Value
             mu = newMu;
             //Calculate the new Covariance Matrix
@@ -666,27 +638,10 @@ namespace adekf {
 
             //Add the Difference on the Estimated State
             State newMu = mu + diff;
-            //Definition of the Jacobian of the Boxplus Function
-            JacobianOf<State> D = D.Identity(DOF, DOF);
-            //Counter for the current dof at iterating
-            int dof = 0;
-            //calculate the part of the Jacobian which belongs to the Manifold
-            auto calcManifoldJacobian = [&](auto &manifold) {
-                int constexpr curDOF = DOFOf<decltype(manifold)>;
-                //Calculate the Jacobian of the Boxplus Function
-                auto plus_diff = eval(
-                        (manifold  + (diff.template segment<curDOF>(dof)+ getDerivator<curDOF>()) - manifold));
-                for (int i = 0; i < curDOF; ++i) {
-                    D.template block<1, curDOF>(dof + i, dof) = plus_diff[i].v;
-                }
-
-                dof += curDOF;
-            };
-            //apply on each manifold, for vectors the Jacobian is the Identity
-            mu.forEachManifold(calcManifoldJacobian);
+            //Calculate  the Jacobian of the Boxplus Function
+            JacobianOf<State> D = transformReferenceJacobian(mu,newMu,diff);
 
             //Set the new Estimated Value
-
             mu = newMu;
             //nullspace constraint
             D=D-(D*N-N)*(N.transpose()*N).inverse()*N.transpose();
