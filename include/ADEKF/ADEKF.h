@@ -254,7 +254,7 @@ namespace adekf {
             assert(!H.hasNaN() && "Differentiation resulted in an indeterminate form");
             //Calculate the Innovation covariance
             auto S = H * sigma * H.transpose() + R;
-            //Calcualte the Kalman Gain
+            //Calculate the Kalman Gain
             auto K = (sigma * H.transpose() * S.inverse()).eval();
             //Calculate the updated state estimate
             auto delta=eval(z-hx);
