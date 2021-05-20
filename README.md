@@ -150,7 +150,7 @@ struct dynamic_model{
     }
 };
 ```
-The functor requires the template T, which is the Scalar type. Type this anywhere where you would write double or float. This is required for the automatic differentiation. The ParameterPack is a variadic template. You can pass as any arguments to your dynamic model as you need. These do not have to be templated with type T. Take care that you write an & in front of state. The dynamic model has to overwrite the given state.
+The functor requires the template T, which is the Scalar type. Type this anywhere where you would write double or float. This is required for the automatic differentiation. The ParameterPack is a variadic template. You can pass as many arguments to your dynamic model as you need. These do not have to be templated with type T. Take care that you write an & in front of state. The dynamic model has to overwrite the given state.
 For example if you want a dynamic model which adds velocity to your position state then you define the functor as:
 
 
@@ -163,7 +163,7 @@ struct dynamic_model{
 };
 ```
 
-To call the predict step of the adkef, we need the process noise which has the same dimension as the state.
+To call the predict step of the adekf, we need the process noise which has the same dimension as the state.
 
 
 ```c++
@@ -272,7 +272,7 @@ struct measurement_model{
 };
 ```
 
-To call the update step of the adkef, we need the measurement noise which has the same dimension as the measurement and a measurement observation.
+To call the update step of the adekf, we need the measurement noise which has the same dimension as the measurement and a measurement observation.
 
 
 ```c++
@@ -417,7 +417,7 @@ While the quaternion requires 4 numbers, the passed covariance is only of dimens
 
 ## Compound States
 States often consist of multiple sub states. For example, estimating the position of an object with an IMU requires not only to track the position, but also the orientation and the velocity.
-The ADEKF ships with Macro support to setup those compound states.
+The ADEKF ships with Macro support to setup those compound states. This requires boost.
 
 Usually, a state can be divided into manifold substates m1 ... mn  and vector substates v1 ... vk.
 The ADEKF provides the Macro ADEKF_MANIFOLD() to setup up the compound states. It takes 3 arguments:
