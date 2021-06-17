@@ -449,7 +449,12 @@ The Vectors parameter takes tuples aswell but this time of the form (VectorSize,
 ADEKF_MANIFOLD(Pose3D,((adekf::SO3,orientation)),(3,position),(3,velocity) )
 ```
 
-While the Vectors parameter is optional the Manifolds parameter is not. Thus, only compound states with Manifolds are supported.
+While the Vectors parameter is optional the Manifolds parameter is not. You can still create compound states of vectors for naming purposes, but in that case you have to pass an empty manifold list by ",," (two commas):
+```c++
+ADEKF_MANIFOLD(FixedOrientationPose,,(3,position),(3,velocity))
+```
+
+Internally, a compound manifold  uses a single Eigen vector  and provides mappings to the different segments through the named fields. Thus, a compound manifold of vectors should be only slightly slower than an Eigen vector state. 
 
 The created CompoundState can be used as any other manifold as the state of the ADEKF, since the macro creates required operators and attributes.
 
@@ -459,11 +464,6 @@ To initialize a compound manifold just pass a value for each of the substates or
 Pose3D pose(adekf::SO3d(),Eigen::Vector3d::Zero(),Eigen::Vector3d()::Zero())
 Pose3D pose_default();
 ```
-
-
-
-
-
 
 
 
