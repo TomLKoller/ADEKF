@@ -176,7 +176,7 @@ namespace adekf
      * @tparam The class to be used
      */
     template <typename T>
-    using CovarianceOf = SquareMatrixType<T, DOFOf<T>>;
+    using CovarianceOf = SquareMatrixType<ScalarOf<T>, DOFOf<T>>;
 
     /**
      * A Helper Function to bypass Eigen Expression Templates
