@@ -2,7 +2,7 @@
 // Created by tomlucas on 01.04.20.
 //
 #include "LinePlot.h"
-#include <ADEKF/ADEKFUtils.h>
+//#include "ADEKF/ADEKFUtils.h"
 
 namespace adekf::viz {
 
@@ -63,7 +63,7 @@ namespace adekf::viz {
     }
 
     void LinePlot::createPlot(size_t size, const char *title, size_t buffer_size, const char *legend) {
-        LOG_STREAM << "Creating plot " << title LOG_END
+        std::cout << "Creating plot " << title <<std::endl;
         auto plot = std::make_shared<JKQTPlotter>();
         plots.push_front(plot);
         JKQTPDatastore *ds = plot->getDatastore();

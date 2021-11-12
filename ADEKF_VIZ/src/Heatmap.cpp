@@ -31,7 +31,7 @@ namespace adekf::viz{
         graph->setWidth(DOF);
         graph->setHeight(DOF);
         // color-map is "MATLAB"
-        graph->setPalette(JKQTPMathImageMATLAB);
+        graph->setColorPalette(JKQTPMathImageMATLAB);
         // get coordinate axis of color-bar and set its label
         graph->getColorBarRightAxis()->setAxisLabel("Covariance");
         // Set min max value of the colorscale

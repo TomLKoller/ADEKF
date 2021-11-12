@@ -15,10 +15,11 @@ include(GNUInstallDirs)
 FILE(GLOB SOURCES src/*.cpp)
 FILE(GLOB HEADERS include/*.h)
 message(${SOURCES})
-
+find_package(Eigen3 REQUIRED)
 add_library(${PROJECT_NAME} SHARED ${SOURCES})
 target_compile_definitions(${PROJECT_NAME} PRIVATE ADEKF_VIZ_BUILD_LIB)
-target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include/)
+message(STATUS "Eigen dir: ${EIGEN_INCLUDE_PATH}")
+target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include/ ${EIGEN_INCLUDE_PATH})
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
         VERSION ${PROJECT_VERSION}
