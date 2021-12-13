@@ -3,6 +3,7 @@
 #include<Eigen/Geometry>
 #include "../ceres/rotation.h"
 #include "../ceres/jet.h"
+#include "type_utils.h"
 
 using namespace Eigen;
 
@@ -89,6 +90,7 @@ namespace ADEKF {
             SO2<ResultScalar> delta = other.inverse() * *this;
             return Matrix<ResultScalar, DOF, 1>(anglemod(delta.angle()));
         }
+        LOCAL_PARAMETRISATION(SO2,3);
 
         friend std::ostream &operator<<(std::ostream &stream, const SO2<Scalar> &state) {
             return stream << state.angle();

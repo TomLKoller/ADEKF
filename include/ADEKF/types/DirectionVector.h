@@ -3,6 +3,7 @@
 #include<Eigen/Geometry>
 #include "../ADEKFUtils.h"
 #include "../ceres/jet.h"
+#include "type_utils.h"
 
 
 namespace adekf {
@@ -56,6 +57,14 @@ namespace adekf {
          *  Default is required to be used in the ADEKF.
          */
         DirectionVector():Eigen::Matrix<Scalar,3,1>(0.,0.,1.)  {}
+
+        DirectionVector(const Scalar * src): Eigen::Matrix<Scalar, 3, 1>(src){
+
+             }
+        
+        void toPointer(Scalar *dest){
+            (Eigen::Map<Eigen::Matrix<Scalar,3,1> >(dest))=*this;
+        }
 
 
         /**
@@ -192,6 +201,9 @@ namespace adekf {
         operator-(const DirectionVector<OtherScalar> &other) const {
             return getLog(getRx<OtherScalar>(other).transpose() * *this);
         }
+
+        LOCAL_PARAMETRISATION(DirectionVector,3);
+        
 
         friend std::ostream &operator<<(std::ostream &stream, const DirectionVector<Scalar> &state) {
             return stream << state.transpose() << " ";

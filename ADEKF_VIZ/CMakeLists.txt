@@ -18,8 +18,6 @@ message(${SOURCES})
 find_package(Eigen3 REQUIRED)
 add_library(${PROJECT_NAME} SHARED ${SOURCES})
 target_compile_definitions(${PROJECT_NAME} PRIVATE ADEKF_VIZ_BUILD_LIB)
-message(STATUS "Eigen dir: ${EIGEN_INCLUDE_PATH}")
-target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include/ ${EIGEN_INCLUDE_PATH})
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
         VERSION ${PROJECT_VERSION}
@@ -51,6 +49,9 @@ if (NOT VTK_FOUND)
     return ()
 endif()
 message (STATUS "VTK_VERSION: ${VTK_VERSION}")
+
+find_package(Eigen3)
+target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include/ ${EIGEN3_INCLUDE_DIR})
 
 # include all components
 target_link_libraries(${PROJECT_NAME} PUBLIC ${VTK_LIBRARIES} ${Boost_LIBRARIES}  ${CMAKE_THREAD_LIBS_INIT}  Qt5::Core Qt5::Widgets Qt5::Gui Qt5::PrintSupport Qt5::Svg Qt5::Xml JKQTPlotterSharedLib )

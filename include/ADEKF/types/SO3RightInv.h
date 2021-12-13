@@ -4,7 +4,7 @@
 #include "../ceres/rotation.h"
 #include "../ADEKFUtils.h"
 #include "SO3.h"
-
+#include "type_utils.h"
 
 namespace adekf {
     
@@ -15,8 +15,7 @@ class SO3RightInvariant: public Manifold, public Eigen::Quaternion<Scalar> {
 public:
 	using ScalarType = Scalar;
 	static constexpr unsigned DOF = 3;
-	static constexpr unsigned GLOBAL_SIZE=4;
-
+	
 	SO3RightInvariant(const Scalar &w, const Scalar &x, const Scalar &y, const Scalar &z) :
 			Eigen::Quaternion<Scalar>(w, x, y, z) {
 		Eigen::Quaternion<Scalar>::normalize();
@@ -105,6 +104,7 @@ public:
 		return result;
 	}
 
+	LOCAL_PARAMETRISATION(SO3RightInvariant,4);
 
 
 

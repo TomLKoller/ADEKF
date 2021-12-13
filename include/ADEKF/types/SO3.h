@@ -3,6 +3,7 @@
 #include<Eigen/Geometry>
 #include "../ceres/rotation.h"
 #include "../ADEKFUtils.h"
+#include "type_utils.h"
 
 
 namespace adekf {
@@ -41,7 +42,6 @@ class SO3: public Manifold, public Eigen::Quaternion<Scalar> {
 public:
 	using ScalarType = Scalar;
 	static constexpr unsigned DOF = 3;
-	static constexpr unsigned GLOBAL_SIZE=4;
 
 	SO3(const Scalar &w, const Scalar &x, const Scalar &y, const Scalar &z) :
 			Eigen::Quaternion<Scalar>(w, x, y, z) {
@@ -110,14 +110,7 @@ public:
         return *this * SO3<OtherScalar>(delta);
 	}
 
-    /**
-     * Operator for ceres local parameterization
-     */
-    template<typename T>
-    bool operator()(const T* x,const T* delta,T* x_plus_delta) const {
-        (SO3<T>(x)+Eigen::Map<const Eigen::Matrix<T,DOF,1>>(delta)).toPointer(x_plus_delta);
-        return true;
-    }
+   
 
 
 	template<typename OtherScalar>
@@ -131,6 +124,7 @@ public:
 		return result;
 	}
 
+    LOCAL_PARAMETRISATION(SO3,4);
 
 
 
