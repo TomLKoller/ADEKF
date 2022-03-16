@@ -1,5 +1,8 @@
+
+
+find_package(ADEKF CONFIG REQUIRED)
 add_executable(slam_and_orientation testADEKF.cpp)
-target_link_libraries(slam_and_orientation PUBLIC ADEKF)
+target_link_libraries(slam_and_orientation PRIVATE ADEKF)
 
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)

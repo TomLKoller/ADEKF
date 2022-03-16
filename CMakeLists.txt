@@ -9,13 +9,13 @@ include(GNUInstallDirs)
 
 add_library(${PROJECT_NAME} INTERFACE)
 
-option(${PROJECT_NAME}_BUILD_EXAMPLES "Build examples" OFF)
+option(${PROJECT_NAME}_BUILD_EXAMPLES "Build examples" ON)
 option(${PROJECT_NAME}_BUILD_TESTS "Build Tests" OFF)
 #option(${PROJECT_NAME}_BUILD_RESEARCH "Build Research" OFF)
 
 target_include_directories(${PROJECT_NAME} INTERFACE
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/ADEKF>
-  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
+  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}> )
 
 target_compile_features(${PROJECT_NAME} INTERFACE cxx_std_17)
 
