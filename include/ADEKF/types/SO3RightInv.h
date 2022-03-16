@@ -48,6 +48,10 @@ public:
     SO3RightInvariant(const Scalar * src): Eigen::Quaternion<Scalar>(src){
 
     }
+	template<int jetsize>
+    static SO3RightInvariant<Scalar> extractFromJet(const SO3RightInvariant<ceres::Jet<Scalar,jetsize>  >& other){
+        return SO3RightInvariant(other.w().a,other.x().a,other.y().a,other.z().a);
+    }
 
     void toPointer(Scalar *dest){
         (Eigen::Map<Eigen::Matrix<Scalar,4,1> >(dest))=this->coeffs();

@@ -1,3 +1,4 @@
+#pragma once
 #include <boost/preprocessor.hpp>
 #include <boost/preprocessor/seq.hpp>
 #include <boost/preprocessor/tuple.hpp>
@@ -82,6 +83,7 @@ struct defaultValue<Eigen::MatrixBase<DERIVED> >{
 #define ADEKF_ADD_DOF(name) + ADEKF_GETDOF(name)
 #define ADEKF_ADD_GLOBAL_SIZE(name) + ADEKF_GETGLOBAL(name)
 #define ADEKF_ASSIGN(name) name=other.name;
+#define ADEKF_EXTRACT_FROM_JET(name) returner__.name=other.name.extractFromJet(other.name);
 #define ADEKF_ARG_NAME(name)  arg_##name
 #define ADEKF_STREAM_ASSIGN_VECTOR(v_members) vector_part << ADEKF_TRANSFORM_COMMA_UNCHECKED(ADEKF_ARG_NAME,v_members);
 
@@ -142,6 +144,14 @@ void operator=(const name<T> & other){\
 void operator=(const name<T> && other){\
   ADEKF_TRANSFORM(ADEKF_ASSIGN,m_members)\
   vector_part=other.vector_part;\
+} \
+template<int jetsize>  \
+static name<T> extractFromJet(const name<ceres::Jet<T,jetsize> > & other){\
+  name<T> returner__; \
+  ADEKF_TRANSFORM(ADEKF_EXTRACT_FROM_JET,m_members)\
+  for(size_t i=0; i < VEC_DOF; i++)\
+    returner__.vector_part(i)=other.vector_part(i).a;\
+  return returner__;\
 }
 
 
@@ -234,7 +244,6 @@ EIGEN_MAKE_ALIGNED_OPERATOR_NEW\
 	ADEKF_DEDUCTION_GUIDE(name,m_members v_members)\
 	typedef adekf::CovarianceOf<name<double>> name ##Cov;
 
-//ADEKF_INSTREAM(name, m_members, v_members) \
 
 
 

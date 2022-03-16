@@ -376,34 +376,7 @@ namespace adekf {
 
     private:
 
-        /**
-        * Calculation of the new Jacobian  for a CompoundManifold as State
-        * @tparam Derived The MatrixType of the Covariance
-        * @tparam ManifoldType The Type of Manifold used as State
-        * @param f The Dynamic Model f(x)
-        * @param input Result of an Addition of the State and a dual component
-        * @param F The resulting Jacobian. Calculated with dual numbers
-        */
-        template<typename Derived, typename ManifoldType, typename OtherManifoldType>
-        void calcJacobianCompoundManifold(const ManifoldType &input, const OtherManifoldType &otherManifold,
-                                          MatrixBase<Derived> &F) {
-            int dof = 0;
-            auto calcManifoldJacobian = [&](auto &manifold, auto &other) {
-                int constexpr curDOF = DOFOf<decltype(manifold)>;
-                //Calculate the Jacobian of the Boxplus Function
-                auto result = manifold - other;
-                for (int i = 0; i < curDOF; ++i) {
-                    F.row(dof + i) = result(i).v;
-                }
-                dof += curDOF;
-            };
-            //Apply on each Manifold
-            input.forEachManifoldWithOther(calcManifoldJacobian, otherManifold);
-            //Read vector part
-            for(int i=0; i < input.VEC_DOF; i++){
-                F.row(dof+i)=input.vector_part(i).v;
-            }
-        }
+       
 
 
         /**
@@ -420,7 +393,7 @@ namespace adekf {
             //Set the new state estimate
             f(mu);
             //The difference of a differentiated manifold with it's identity results in the jacobian
-            F=extractJacobi(input-mu);
+            extractJacobian(input,mu,F);
         }
 
 
@@ -446,7 +419,7 @@ namespace adekf {
             //Set the new state estimate
             f(mu);
             //calculate the Jacobian
-            calcJacobianCompoundManifold(input, mu, F);
+            extractJacobian(input, mu, F);
         }
 
 
@@ -503,7 +476,7 @@ namespace adekf {
             //Set the observation to the result of the measurement model
             modelResult = h(mu);
             //calculate the Jacobian
-            calcJacobianCompoundManifold(input, modelResult, H);
+            extractJacobian(input, modelResult, H);
         }
 
         /**
@@ -524,7 +497,7 @@ namespace adekf {
             //Set the observation to the result of the measurement model
             modelResult = h(mu);
             //calculate the Jacobian
-            H=extractJacobi(input - modelResult);
+            extractJacobian(input,modelResult,H);
 
         }
 

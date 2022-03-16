@@ -22,29 +22,6 @@ namespace adekf
     };
 
     /**
-         * Generates a Vector of dual Components
-         * @tparam Size The Size of the Vector and the dual components
-         * @return A dual component vector, to be added to a state
-         */
-    template <unsigned Size>
-    const Eigen::Matrix<ceres::Jet<double, Size>, Size, 1> &getDerivator()
-    {
-        //The resulting dual component vector
-        static Eigen::Matrix<ceres::Jet<double, Size>, Size, 1> result;
-        //only set on first call
-        static bool first_call = true;
-        //Set the first coefficient in the first row to 1, the second in the second and so on.
-        if (first_call)
-        {
-            result.setZero();
-            for (unsigned i = 0; i < Size; ++i)
-                result[i].v[i] = 1; // = ceres::Jet<ScalarType, Size>(0, i);
-            first_call = false;
-        }
-        return result;
-    }
-
-    /**
      * Retrieves Scalar Type and DOF from a given Manifold Class
      * @tparam T The given class
      * @tparam s whether the class is an Eigen Class
@@ -129,13 +106,15 @@ namespace adekf
     template <typename T>
     static constexpr int GlobalOf = StateInfo<typename std::remove_reference<T>::type>::GLOBAL_SIZE;
 
+    template <typename T>
+    using ScalarOf = typename adekf::StateInfo<typename std::remove_reference<T>::type>::ScalarType;
     /**
      * Retrieves the scalar type of a state
      * @param state the variable to derive the scalar type from
      */
-#define ScalarOf(state) typename adekf::StateInfo<typename std::remove_reference<decltype(state)>::type>::ScalarType
-    template <typename T>
-    using ScalarOf = typename adekf::StateInfo<typename std::remove_reference<T>::type>::ScalarType;
+#define ScalarOf(state) adekf::ScalarOf<decltype(state)>
+
+
 
 /*
  * Macro to read DOF from parameter name, can be used to read DOF of auto parameters
@@ -150,24 +129,24 @@ namespace adekf
     static constexpr bool dynamicMatrix = N *M > USE_EIGEN_DYNAMIC_THRESHHOLD;
 
     /**
-         * A Matrix type (It is the Eigen::Matrix)
-         * @tparam N Number of Rows
-         * @tparam M Number of Columns
-         */
+     * A Matrix type (It is the Eigen::Matrix)
+     * @tparam N Number of Rows
+     * @tparam M Number of Columns
+     */
     template <typename ScalarType, int N, int M>
     using MatrixType = Eigen::Matrix<ScalarType, N, M>;
     /**
-         * An Eigen Matrix which chooses automatically when it is usefull to use dynamic allocation
-         * @tparam N Number of Rows
-         * @tparam M Number of Columns
-         */
+     * An Eigen Matrix which chooses automatically when it is usefull to use dynamic allocation
+     * @tparam N Number of Rows
+     * @tparam M Number of Columns
+     */
     template <typename ScalarType, int N, int M>
     using AutoMatrixType = typename std::conditional<dynamicMatrix<N, M>, Eigen::Matrix<double, -1, -1>, Eigen::Matrix<double, N, N>>::type;
 
     /**
-         * A Square Matrix with the Scalar Type of the State
-         * @tparam N Number of Rows and Columns
-         */
+     * A Square Matrix with the Scalar Type of the State
+     * @tparam N Number of Rows and Columns
+     */
     template <typename ScalarType, int N>
     using SquareMatrixType = MatrixType<ScalarType, N, N>;
 
@@ -203,8 +182,8 @@ namespace adekf
     template <typename BinaryOp, typename LhsType, typename RhsType>
     auto eval(const Eigen::CwiseBinaryOp<BinaryOp, LhsType, RhsType> &result)
     {
-        //The eval() function returns the result of the operation
-        //If this is not used auto will not work correctly
+        // The eval() function returns the result of the operation
+        // If this is not used auto will not work correctly
         return result.eval();
     }
 
@@ -214,10 +193,10 @@ namespace adekf
         return result.eval();
     }
 
-    //Macros to split noise vector into parts
+    // Macros to split noise vector into parts
 /**
  * Cuts a segment from the vector noise from start to start+size
- *
+ *f
  * @param noise  the noise vector
  * @param start  the start of the segment of the noise
  * @param size the size of the noise vector segment
@@ -242,10 +221,11 @@ namespace adekf
  *
  * Results in a segment of the noise vector from start to start+size (exclusive) of length size
  */
-#define NOISE(...) GET_NOISE_MACRO(__VA_ARGS__, NOISE_WITH_OTHER_NAME, NOISE_WITHOUT_NOISE_NAME) \
-(__VA_ARGS__)
+#define NOISE(...)                                                                \
+    GET_NOISE_MACRO(__VA_ARGS__, NOISE_WITH_OTHER_NAME, NOISE_WITHOUT_NOISE_NAME) \
+    (__VA_ARGS__)
 
-    //Macros for output operations
+    // Macros for output operations
 
 #ifndef LOG_STREAM
 /**
@@ -259,12 +239,12 @@ namespace adekf
  * Error stream macro defaults to std::err
  * User can define to send data to any other stream
  */
-#define ERR_STREAM std::err
+#define ERR_STREAM std::cerr
 #endif
-//just a define for << std::endl
+// just a define for << std::endl
 #define LOG_END << std::endl;
 
-//Macros for Type results
+// Macros for Type results
 /**
  * The resulting type if you add scalars of type T1 and T2  (T1+T2)
  */
@@ -274,30 +254,32 @@ namespace adekf
  * The resulting type if you subtract scalars of type T1 and T2 (T1-T2)
  */
 #define ADEKF_MINUSRESULT(T1, T2) decltype(std::declval<T1>() - std::declval<T2>())
+template<typename T>
+using ADEKF_DELTA_TYPE= Eigen::Matrix<adekf::ScalarOf<T>,adekf::DOFOf<T>,1>;
 
     /**
- * Determines whether all matrix elements are not inf or nan
- * @param matrix The matrix to check
- * @return	whether all values are finite
- */
+     * Determines whether all matrix elements are not inf or nan
+     * @param matrix The matrix to check
+     * @return	whether all values are finite
+     */
     template <typename Derived>
     bool isfinite(const Eigen::MatrixBase<Derived> &matrix)
     {
         return matrix.allFinite();
     }
     /**
- * does nothing just for variadic resolve of assert_inputs(T first,ARGS) with 0 arguments
- */
+     * does nothing just for variadic resolve of assert_inputs(T first,ARGS) with 0 arguments
+     */
     void inline assert_finite()
     {
     }
     /**
- * asserts whether all input numbers have finite values
- *
- * Uses variadic Evaluation to check an undefined amount of variables
- * @param first  the argument which is evaluated at this call
- * @param args   arguments for next calls
- */
+     * asserts whether all input numbers have finite values
+     *
+     * Uses variadic Evaluation to check an undefined amount of variables
+     * @param first  the argument which is evaluated at this call
+     * @param args   arguments for next calls
+     */
 
     template <typename T, typename... Args>
     void assert_finite(T first, Args... args)
@@ -306,19 +288,65 @@ namespace adekf
         assert_finite(args...);
     }
 
-    //Vector type to support optimiziation on Eigen and State Types on std::vector (usual std::vector breaks)
+    // Vector type to support optimiziation on Eigen and State Types on std::vector (usual std::vector breaks)
     template <class AlignedClass>
     using aligned_vector = std::vector<AlignedClass, Eigen::aligned_allocator<AlignedClass>>;
 
     /**
- * Checks whether  a matrix is positive definite (usefull for covariance)
- * 
- * Computationally expensive since it uses ldlt decomposition
- * @tparam Derived type of the Matrix
- * @param Matrix to Matrix to check
- * 
- * @return true if matrix is positive definite
- */
+     * Generates a Vector of dual Components
+     * @tparam Size The Size of the Vector and the dual components
+     * @return A dual component vector, to be added to a state
+     */
+    template <unsigned Size>
+    const Eigen::Matrix<ceres::Jet<double, Size>, Size, 1> &getDerivator()
+    {
+        // The resulting dual component vector
+        static Eigen::Matrix<ceres::Jet<double, Size>, Size, 1> result;
+        // only set on first call
+        static bool first_call = true;
+        // Set the first coefficient in the first row to 1, the second in the second and so on.
+        if (first_call)
+        {
+            result.setZero();
+            for (unsigned i = 0; i < Size; ++i)
+                result[i].v[i] = 1; // = ceres::Jet<ScalarType, Size>(0, i);
+            first_call = false;
+        }
+        return result;
+    }
+
+    /**
+     * Generates a Vector of dual Components
+     * @tparam STATE The State type to retrieve the derivator for
+     * @param for audodeduction
+     * @return A dual component vector, to be added to a state
+     */
+    template <typename STATE>
+    const Eigen::Matrix<ceres::Jet<double, DOFOf<STATE>>, DOFOf<STATE>, 1> &getDerivator(const STATE &)
+    {
+        return getDerivator<DOFOf<STATE>>();
+    }
+
+    /**
+     * Generates a Vector of dual Components
+     * @tparam STATE The State type to retrieve the derivator for
+     * @return A dual component vector, to be added to a state
+     */
+    template <typename STATE>
+    const Eigen::Matrix<ceres::Jet<double, DOFOf<STATE>>, DOFOf<STATE>, 1> &getDerivator()
+    {
+        return getDerivator<DOFOf<STATE>>();
+    }
+
+    /**
+     * Checks whether  a matrix is positive definite (usefull for covariance)
+     *
+     * Computationally expensive since it uses ldlt decomposition
+     * @tparam Derived type of the Matrix
+     * @param Matrix to Matrix to check
+     *
+     * @return true if matrix is positive definite
+     */
     template <class Derived>
     bool isPositiveDefinite(const Eigen::MatrixBase<Derived> &matrix)
     {
@@ -327,15 +355,15 @@ namespace adekf
     }
 
     /**
- * Sets all eigenvalues to the minimum value eps.
- * 
- * Computationally expensive since it uses eigen decomposition
- * 
- * @tparam Derived type of the Matrix
- * @param matrix to regularize, inplace operation
- * @param eps the minimum value of the eigen values
- * 
- */
+     * Sets all eigenvalues to the minimum value eps.
+     *
+     * Computationally expensive since it uses eigen decomposition
+     *
+     * @tparam Derived type of the Matrix
+     * @param matrix to regularize, inplace operation
+     * @param eps the minimum value of the eigen values
+     *
+     */
     template <class Derived>
     void assurePositiveDefinite(Eigen::MatrixBase<Derived> &matrix, double eps = 1e-10)
     {
@@ -360,14 +388,14 @@ namespace adekf
         }
     }
     /**
- * @brief Extracts a Jacobian from the given vector with jets.
- * 
- * @tparam ScalarType The Scalartype of the Jet
- * @tparam _LDOF The number of Rows
- * @tparam _RDOF The number of Cols
- * @param result The vector to extract the Jacobi from. Has to be the result of automatic Differentiation with jets
- * @return MatrixType<ScalarType,_LDOF,_RDOF> The extracted Jacobian. 
- */
+     * @brief Extracts a Jacobian from the given vector with jets.
+     *
+     * @tparam ScalarType The Scalartype of the Jet
+     * @tparam _LDOF The number of Rows
+     * @tparam _RDOF The number of Cols
+     * @param result The vector to extract the Jacobi from. Has to be the result of automatic Differentiation with jets
+     * @return MatrixType<ScalarType,_LDOF,_RDOF> The extracted Jacobian.
+     */
     template <typename ScalarType, int _LDOF, int _RDOF>
     AutoMatrixType<ScalarType, _LDOF, _RDOF> extractJacobi(const Eigen::Matrix<ceres::Jet<ScalarType, _RDOF>, _LDOF, 1> &result)
     {
@@ -380,8 +408,52 @@ namespace adekf
     }
 
     /**
+     * Calculates the Jacobian of a manifold instance difference (input-otherManifold)
+     * @tparam Derived The MatrixType of the Covariance
+     * @tparam ManifoldType The Type of Manifold used as State
+     * @param f The Dynamic Model f(x)
+     * @param input Result of an Addition of the State and a dual component
+     * @param F The resulting Jacobian. Calculated with dual numbers
+     */
+    template <typename Derived, typename ManifoldType, typename OtherManifoldType>
+    void extractJacobian(const ManifoldType &input, const OtherManifoldType &otherManifold,
+                         Eigen::MatrixBase<Derived> &F)
+    {
+        if constexpr (!std::is_base_of<Manifold, ManifoldType>::value)
+        {
+            F = extractJacobi(input);
+        }
+        else if constexpr (!std::is_base_of<CompoundManifold, ManifoldType>::value)
+        {
+            F = extractJacobi(input-otherManifold);
+        }
+        else
+        {
+            int dof = 0;
+            auto calcManifoldJacobian = [&](auto &manifold, auto &other)
+            {
+                size_t constexpr curDOF = DOFOf<decltype(manifold)>;
+                // Calculate the Jacobian of the Boxplus Function
+                auto result = manifold - other;
+                for (size_t i = 0; i < curDOF; ++i)
+                {
+                    F.row(dof + i) = result(i).v;
+                }
+                dof += curDOF;
+            };
+            // Apply on each Manifold
+            input.forEachManifoldWithOther(calcManifoldJacobian, otherManifold);
+            // Read vector part
+            for (size_t i = 0; i < input.VEC_DOF; i++)
+            {
+                F.row(dof + i) = input.vector_part(i).v;
+            }
+        }
+    }
+
+    /**
      * @brief Calculates the transformation Jacobian that transform from reference r1 to reference r2
-     * 
+     *
      * @tparam Manifold The type of the manifold
      * @tparam DOF The degree of freedom of the manifold
      * @param ref1 The base reference
@@ -398,29 +470,30 @@ namespace adekf
         }
         else
         {
-            //Definition of the Jacobian of the Boxplus Function
+            // Definition of the Jacobian of the Boxplus Function
             AutoMatrixType<ScalarOf<ManifoldType>, DOF, DOF> D = D.Identity(DOF, DOF);
-            //Counter for the current dof at iterating
+            // Counter for the current dof at iterating
             int dof = 0;
-            //calculate the part of the Jacobian which belongs to the Manifold
-            auto calcManifoldJacobian = [&](auto &manifold, auto & other_manifold) {
+            // calculate the part of the Jacobian which belongs to the Manifold
+            auto calcManifoldJacobian = [&](auto &manifold, auto &other_manifold)
+            {
                 int constexpr curDOF = DOFOf<decltype(manifold)>;
-                //Calculate the Jacobian of the Boxplus Function
+                // Calculate the Jacobian of the Boxplus Function
                 auto cur_Er1 = Er1.template segment<curDOF>(dof);
                 D.template block<curDOF, curDOF>(dof, dof) = transformReferenceJacobian(manifold, other_manifold, cur_Er1);
                 dof += curDOF;
             };
-            //apply on each manifold, for vectors the Jacobian is the Identity
-            ref1.forEachManifoldWithOther(calcManifoldJacobian,ref2);
+            // apply on each manifold, for vectors the Jacobian is the Identity
+            ref1.forEachManifoldWithOther(calcManifoldJacobian, ref2);
 
-             return D;
+            return D;
         }
     }
     /**
      * @brief Calculates the transformation Jacobian that transform from reference r1 to reference r2
-     * 
+     *
      * This method is used in the special case where the expected value of the Gaussian is reference r1.
-     * 
+     *
      * @tparam Manifold The type of the manifold
      * @tparam DOF The degree of freedom of the manifold
      * @param ref1 The base reference
@@ -430,25 +503,26 @@ namespace adekf
     template <typename ManifoldType, int DOF = DOFOf<ManifoldType>>
     inline AutoMatrixType<ScalarOf<ManifoldType>, DOF, DOF> transformReferenceJacobian(const ManifoldType &ref1, const ManifoldType &ref2)
     {
-         if constexpr (!std::is_base_of<CompoundManifold, ManifoldType>::value)
+        if constexpr (!std::is_base_of<CompoundManifold, ManifoldType>::value)
         {
             return extractJacobi(ref1 + getDerivator<DOF>() - ref2);
         }
         else
         {
-            //Definition of the Jacobian of the Boxplus Function
+            // Definition of the Jacobian of the Boxplus Function
             AutoMatrixType<ScalarOf<ManifoldType>, DOF, DOF> D = D.Identity(DOF, DOF);
-            //Counter for the current dof at iterating
+            // Counter for the current dof at iterating
             int dof = 0;
-            //calculate the part of the Jacobian which belongs to the Manifold
-            auto calcManifoldJacobian = [&](auto &manifold, auto & other_manifold) {
+            // calculate the part of the Jacobian which belongs to the Manifold
+            auto calcManifoldJacobian = [&](auto &manifold, auto &other_manifold)
+            {
                 int constexpr curDOF = DOFOf<decltype(manifold)>;
-                //Calculate the Jacobian of the Boxplus Function
+                // Calculate the Jacobian of the Boxplus Function
                 D.template block<curDOF, curDOF>(dof, dof) = transformReferenceJacobian(manifold, other_manifold);
                 dof += curDOF;
             };
-            //apply on each manifold, for vectors the Jacobian is the Identity
-            ref1.forEachManifoldWithOther(calcManifoldJacobian,ref2);
+            // apply on each manifold, for vectors the Jacobian is the Identity
+            ref1.forEachManifoldWithOther(calcManifoldJacobian, ref2);
 
             return D;
         }

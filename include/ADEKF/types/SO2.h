@@ -37,6 +37,11 @@ namespace ADEKF {
          */
         SO2(const Matrix<Scalar, 2, 1> &vector) : Rotation2D<Scalar>(atan2(vector[1], vector[0])) {};
 
+        template<int jetsize>
+        static SO2<Scalar> extractFromJet(const SO2<ceres::Jet<Scalar,jetsize> >& other){
+            return SO2{other.angle().a};
+        }
+
         /**
          * Modulo for angles. Changes the result, but not the derivative
          * @tparam T The Scalar Type of the Jet

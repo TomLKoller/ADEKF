@@ -61,6 +61,11 @@ namespace adekf {
         DirectionVector(const Scalar * src): Eigen::Matrix<Scalar, 3, 1>(src){
 
              }
+
+        template<int jetsize>
+        static DirectionVector<Scalar> extractFromJet(const DirectionVector<ceres::Jet<Scalar,jetsize> >& other){
+            return DirectionVector{other.x().a,other.y().a,other.z().a};
+        }     
         
         void toPointer(Scalar *dest){
             (Eigen::Map<Eigen::Matrix<Scalar,3,1> >(dest))=*this;

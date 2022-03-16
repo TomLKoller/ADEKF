@@ -71,6 +71,11 @@ public:
 	SO3(const SO3<OtherScalar> & other):Eigen::Quaternion<Scalar>(other){
 
 	}
+    template<int jetsize>
+    static SO3<Scalar> extractFromJet(const SO3<ceres::Jet<Scalar,jetsize> > & other){
+        return SO3(other.w().a,other.x().a,other.y().a,other.z().a);
+    }
+
 
     SO3(const Scalar * src): Eigen::Quaternion<Scalar>(src){
 
