@@ -7,23 +7,24 @@
 //////////////////////////////////////////////////////////
 
 
-#define ADEKF_IF_0(macro, ...)
-#define ADEKF_IF_1(macro,...) macro(__VA_ARGS__)
-#define ADEKF_IF_(BOOL,macro,...) ADEKF_IF_ ## BOOL (macro,__VA_ARGS__)
+#define ADEKF_IF_0(macro, args)
+#define ADEKF_IF_1(macro, args)  macro##args
+#define ADEKF_IF_(BOOL,macro,...) ADEKF_IF_##BOOL (macro, (__VA_ARGS__))
 #define ADEKF_IF(BOOL,macro,...) ADEKF_IF_(BOOL,macro,__VA_ARGS__)
 
 
 #define ADEKF_SEQ_NOT_EMPTY(seq) BOOST_PP_BOOL(BOOST_PP_DEC(BOOST_PP_SEQ_SIZE(()seq)))
-#define ADEKF_IF_SEQ_NOT_EMPTY(seq,macro,...) ADEKF_IF(ADEKF_SEQ_NOT_EMPTY(seq),macro,__VA_ARGS__)
+#define ADEKF_IF_SEQ_NOT_EMPTY(seq,macro,...)  ADEKF_IF(ADEKF_SEQ_NOT_EMPTY(seq),macro,__VA_ARGS__)
 #define TRANSFORM_IF_NOT_EMPTY(macro,data,sequence) ADEKF_IF_SEQ_NOT_EMPTY(sequence,BOOST_PP_SEQ_TRANSFORM_S,1,macro,data,sequence)
-#define FOR_EACH_IF_NOT_EMPTY(macro,data,sequence)  ADEKF_IF_SEQ_NOT_EMPTY(sequence,BOOST_PP_SEQ_FOR_EACH_R,1,macro,data,sequence)
+#define FOR_EACH_IF_NOT_EMPTY(macro,data,sequence)  ADEKF_IF_SEQ_NOT_EMPTY(sequence, BOOST_PP_SEQ_FOR_EACH_R, 1, macro, data, sequence)
 
-#define ADEKF_APPLY_MACRO_ON_TUPLE(r, macro, tuple) macro (tuple)
+#define ADEKF_APPLY_MACRO_ON_TUPLE(r, macro, tuple) macro(tuple)
 
 //fix for empty sequence
 #define BOOST_PP_SEQ_ENUM_0
-#define ADEKF_TRANSFORM_COMMA(macro, entries) BOOST_PP_SEQ_ENUM(TRANSFORM_IF_NOT_EMPTY( ADEKF_APPLY_MACRO_ON_TUPLE, macro, entries))
-#define ADEKF_TRANSFORM_COMMA_UNCHECKED(macro,sequence) BOOST_PP_SEQ_ENUM(BOOST_PP_SEQ_TRANSFORM_S(1,ADEKF_APPLY_MACRO_ON_TUPLE,macro,sequence))
+#define PASS(argument) BOOST_PP_SEQ_ENUM(argument)
+#define ADEKF_TRANSFORM_COMMA(macro, entries) PASS(TRANSFORM_IF_NOT_EMPTY( ADEKF_APPLY_MACRO_ON_TUPLE, macro, entries)) 
+#define ADEKF_TRANSFORM_COMMA_UNCHECKED(macro,sequence) PASS(BOOST_PP_SEQ_TRANSFORM_S(1,ADEKF_APPLY_MACRO_ON_TUPLE,macro,sequence))
 #define ADEKF_TRANSFORM_UNCHECKED(macro,sequence) BOOST_PP_SEQ_FOR_EACH_R(1,ADEKF_APPLY_MACRO_ON_TUPLE,macro,sequence)
 
 #define ADEKF_TRANSFORM(macro, entries) FOR_EACH_IF_NOT_EMPTY(ADEKF_APPLY_MACRO_ON_TUPLE, macro, entries)
@@ -53,7 +54,7 @@ BOOST_PP_FOR_1( \
 
 #define ADEKF_RECURSIVE(seq,output_function) ADEKF_RECURSIVE_(seq,output_function,ADEKF_RECURSIVE_STEP)
 
-#define ADEKF_RECURSIVE_COMMA_(seq,output_function,step) BOOST_PP_SEQ_ENUM(ADEKF_RECURSIVE_(seq,output_function,step))
+#define ADEKF_RECURSIVE_COMMA_(seq,output_function,step) PASS(ADEKF_RECURSIVE_(seq,output_function,step))
 #define ADEKF_RECURSIVE_COMMA(seq,output_function) ADEKF_RECURSIVE_COMMA_(seq,output_function,ADEKF_RECURSIVE_STEP)
 
 /**
@@ -78,7 +79,8 @@ struct defaultValue<Eigen::MatrixBase<DERIVED> >{
 
 #define ADEKF_CONSTRUCTOR_SETTERS(name) name(arg_##name)
 #define ADEKF_SETTERS(name) name=arg_##name;
-#define ADEKF_DEFAULT_CONSTRUCTOR_SETTERS(name) name(defaultValue<typename adekf::StateInfo<decltype(name)>::type>::default_value)
+#define ADEKF_DEFAULT_CONSTRUCTOR_SETTERS(name) name(name)
+//name(defaultValue<typename adekf::StateInfo<decltype(name)>::type>::default_value)
 #define ADEKF_COPY_CONSTRUCTOR(name) name(other.name)
 #define ADEKF_ADD_DOF(name) + ADEKF_GETDOF(name)
 #define ADEKF_ADD_GLOBAL_SIZE(name) + ADEKF_GETGLOBAL(name)
@@ -274,7 +276,7 @@ struct MatrixBlockWrapper{
 #define ADEKF_UNZIP_ATTRIBUTES(macro,seq) FOR_EACH_IF_NOT_EMPTY(ADEKF_APPLY_MACRO_ON_DUPLET,macro,seq)
 
 
-#define ADEKF_MANIFOLD_BOTH(name, manifolds, vectors) template<typename T> struct name :public adekf::CompoundManifold\
+#define ADEKF_MANIFOLD_BOTH(name, manifolds, vectors)  template<typename T> struct name :public adekf::CompoundManifold\
 {\
     static constexpr unsigned VEC_DOF=0 ADEKF_UNZIP_ATTRIBUTES(ADD_UP_SIZE,vectors) ;\
     /**   \
@@ -283,14 +285,14 @@ struct MatrixBlockWrapper{
     ADEKF_UNZIP_ATTRIBUTES(CREATE_ATTRIBUTE,manifolds)             \
     Eigen::Matrix<T,VEC_DOF,1> vector_part; \
     ADEKF_UNZIP_ATTRIBUTES(CREATE_VECTOR_ATTRIBUTE,vectors)    \
-	ADEKF_CONSTRUCT_MANIFOLD_INTERNAL(name,   ADEKF_UNZIP_ATTRIBUTES(RETURN_NAME,manifolds) , ADEKF_UNZIP_ATTRIBUTES(RETURN_NAME,vectors)) 																	\
+	ADEKF_CONSTRUCT_MANIFOLD_INTERNAL(name,   ADEKF_UNZIP_ATTRIBUTES(RETURN_NAME,manifolds) , ADEKF_UNZIP_ATTRIBUTES(RETURN_NAME,vectors)) 	
 
 
 
-#define EXPAND_1(name,manifolds,...) ADEKF_MANIFOLD_BOTH(name,manifolds,BOOST_PP_VARIADIC_TO_SEQ( __VA_ARGS__))
-#define EXPAND_0(name,manifolds,...) ADEKF_MANIFOLD_BOTH(name,manifolds,)
-#define EXPAND_(number, ... )  EXPAND_##number(__VA_ARGS__)
+#define EXPAND_1(name, manifolds, ...) ADEKF_MANIFOLD_BOTH(name,manifolds,BOOST_PP_VARIADIC_TO_SEQ( __VA_ARGS__))
+#define EXPAND_0(name, manifolds, ...) ADEKF_MANIFOLD_BOTH(name,manifolds,)
+#define EXPAND_(number, args )  EXPAND_##number##args
 
-#define ADEKF_PARSE_MANIFOLD(number,  ...) EXPAND_(number,__VA_ARGS__)
+#define ADEKF_PARSE_MANIFOLD(number,  ...) EXPAND_(number, (__VA_ARGS__))
 
 #define ADEKF_MANIFOLD(...) ADEKF_PARSE_MANIFOLD(BOOST_PP_BOOL(BOOST_PP_DEC(BOOST_PP_DEC(BOOST_PP_VARIADIC_SIZE(__VA_ARGS__)))),__VA_ARGS__)
