@@ -55,13 +55,23 @@ public:
     SO3(const Eigen::Matrix<Scalar, DOF, DOF>  &rotationMatrix) :
             Eigen::Quaternion<Scalar>(rotationMatrix) {};
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-	template<typename Derived>
-	SO3(const Eigen::MatrixBase<Derived> & omega){
-        Scalar expData[4];
-        Eigen::Ref<const Eigen::Matrix<Scalar, DOF, 1>> buffer = omega;
-        ceres::AngleAxisToQuaternion(buffer.data(), expData);
-        *this=SO3<Scalar>(expData[0], expData[1], expData[2], expData[3]);
-	}
+
+
+	
+  template<typename Derived >
+  SO3(const Eigen::MatrixBase<Derived>& omegaOrOrientation) {
+      if constexpr (Derived::ColsAtCompileTime == 1) {
+          Scalar expData[4];
+          Eigen::Ref<const Eigen::Matrix<Scalar, DOF, 1>> buffer = omegaOrOrientation;
+          ceres::AngleAxisToQuaternion(buffer.data(), expData);
+          *this = SO3<Scalar>(expData[0], expData[1], expData[2], expData[3]);
+      }
+      else {
+          Eigen::Matrix<Scalar, DOF, DOF> rot{ omegaOrOrientation };
+          *this = SO3<Scalar>(rot);
+      }
+  }
+
 	/**
 	 * Constructor to assign from other scalars (if OtherScalar is convertible non explicitly to Scalar)
 	 * @tparam OtherScalar  The scalar of the other SO3
