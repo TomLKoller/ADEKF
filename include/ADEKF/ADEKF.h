@@ -409,7 +409,7 @@ namespace adekf {
         template<typename Derived, typename DynamicModel, typename ManifoldType>
         void predict_impl(const CompoundManifold &, DynamicModel f, const ManifoldType &input, MatrixBase<Derived> &F) {
             //check if state is a vector compound manifold
-            if(mu.MAN_DOF==0){
+            if constexpr(mu.MAN_DOF==0){
                 for (int i = 0; i < DOF; ++i) {
                     F.row(i) = input.vector_part(i).v;
                     mu.vector_part(i) = input.vector_part(i).a;
@@ -512,13 +512,13 @@ namespace adekf {
          * @param input Result of the Measurement Model with a dual compnent added to the state
          * @param H The resulting Jacobian. Calculated with dual numbers
          */
-        template<int MDOF, typename ModelReturn, typename MeasurementModel, typename Derived>
-        void update_impl_(const MatrixType<MDOF, 1> &, MatrixType<MDOF, 1> &modelResult, const ModelReturn &input,
+        template<typename DerivedMeasurement, typename ModelReturn, typename MeasurementModel, typename Derived>
+        void update_impl_(const MatrixBase<DerivedMeasurement> &, MatrixBase<DerivedMeasurement> &modelResult, const ModelReturn &input,
                           MeasurementModel,
                           MatrixBase<Derived> &H) {
             //The real component of the dual numbers are the result of the measurement model
             //The dual component vectors represent the rows of the jacobian matrix
-                for (int i = 0; i < MDOF; ++i) {
+                for (int i = 0; i < DOFOf<MatrixBase<DerivedMeasurement>>; ++i) {
                     H.row(i) = input[i].v;
                     modelResult[i] = input[i].a;
                 }
@@ -577,7 +577,7 @@ namespace adekf {
         template<typename Derived>
         void add_diff(const CompoundManifold &, const MatrixType<DOF, 1> &diff, const MatrixBase<Derived> &KH) {
             //check if compoundManifold is simple vector this may look a bit dirty but it allows to use the ADEKF_MANIFOLD for vector parts only without significant speed loss
-            if(mu.MAN_DOF==0){
+            if constexpr (mu.MAN_DOF==0){
                 add_diff<Derived>(diff,diff,KH);
                 return;
             }
@@ -630,14 +630,12 @@ namespace adekf {
          * @param KH The Multiplication of Kalman Gain and Measurement-Jacobian
          */
         template<typename Derived>
-        void add_diff(const MatrixType<DOF, 1> &, const MatrixType<DOF, 1> &diff, const MatrixBase<Derived> &KH) {
+        void add_diff(const MatrixType<DOF, 1>&, const MatrixType<DOF, 1>& diff, const MatrixBase<Derived>& KH) {
             //Add the Difference on the State
             mu = mu + diff;
             //Calculate the new Covariance
             sigma = sigma - (KH * sigma);
         }
-
-
     };
 
 
